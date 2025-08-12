@@ -46,6 +46,9 @@ var _ = Describe("controller", Ordered, func() {
 		By("installing rabbitmq cluster operator")
 		Expect(utils.InstallRabbitMQClusterOperator()).To(Succeed())
 
+		By("installing scylla operator")
+		Expect(utils.InstallScyllaOperator()).To(Succeed())
+
 		By("creating manager namespace")
 		cmd := exec.Command("kubectl", "create", "ns", namespace)
 		_, _ = utils.Run(cmd)
@@ -57,6 +60,9 @@ var _ = Describe("controller", Ordered, func() {
 
 		By("uninstalling rabbitmq cluster operator")
 		utils.UninstallRabbitMQClusterOperator()
+
+		By("uninstalling scylla operator")
+		utils.UninstallScyllaOperator()
 
 		By("uninstalling the cert-manager bundle")
 		utils.UninstallCertManager()
