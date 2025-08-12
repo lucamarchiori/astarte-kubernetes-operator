@@ -390,6 +390,14 @@ func InstallScyllaOperator() error {
 		return fmt.Errorf("failed to wait for Scylla cluster pods to be ready: %w", err)
 	}
 
+	// Create scylla connection secret
+	secretData := map[string]string{
+		"username": "",
+		"password": "",
+	}
+	if err := CreateSecret("scylladb-connection-secret", astarteNamespace, secretData); err != nil {
+		return fmt.Errorf("failed to create scylla connection secret: %w", err)
+	}
 	return nil
 }
 
