@@ -19,6 +19,7 @@ limitations under the License.
 package utils
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -273,6 +274,42 @@ func InstallRabbitMQClusterOperator() error {
 
 	if _, err := Run(cmd); err != nil {
 		return fmt.Errorf("failed to wait for RabbitMQ cluster pods to be ready: %w", err)
+	}
+
+	// Get RabbitMQ credentials
+	// kubectl get secret -n rabbitmq rabbitmq-default-user -o jsonpath='{.data.username}' | base64 -d
+	// kubectl get secret -n rabbitmq rabbitmq-default-user -o jsonpath='{.data.password}' | base64 -d
+
+	cmd = exec.Command("kubectl", "get", "secret", "-n", rabbitmqNamespace, "rabbitmq-default-user",
+		"-o", "jsonpath={.data.username}")
+	usrB64, err := Run(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to get RabbitMQ username: %w", err)
+	}
+
+	cmd = exec.Command("kubectl", "get", "secret", "-n", rabbitmqNamespace, "rabbitmq-default-user",
+		"-o", "jsonpath={.data.password}")
+	pwdB64, err := Run(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to get RabbitMQ password: %w", err)
+	}
+
+	usr, err := base64.StdEncoding.DecodeString(string(usrB64))
+	if err != nil {
+		return fmt.Errorf("failed to decode rabbitmq username: %w", err)
+	}
+	pwd, err := base64.StdEncoding.DecodeString(string(pwdB64))
+	if err != nil {
+		return fmt.Errorf("failed to decode rabbitmq password: %w", err)
+	}
+
+	secretData := map[string]string{
+		"username": strings.TrimSpace(string(usr)),
+		"password": strings.TrimSpace(string(pwd)),
+	}
+
+	if err := CreateSecret("rabbitmq-connection-secret", astarteNamespace, secretData); err != nil {
+		return fmt.Errorf("failed to create RabbitMQ connection secret: %w", err)
 	}
 
 	return nil
