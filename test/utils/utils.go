@@ -281,3 +281,21 @@ func UninstallRabbitMQClusterOperator() {
 		warnError(err)
 	}
 }
+
+func EnsureNamespaceExists(namespace string) error {
+
+	if namespace == "default" || namespace == "kube-system" {
+		// Skip creating default and kube-system namespaces
+		return nil
+	}
+
+	cmd := exec.Command("kubectl", "create", "namespace", namespace)
+	if _, err := Run(cmd); err != nil {
+		if !strings.Contains(err.Error(), "already exists") {
+			return fmt.Errorf("failed to create namespace %s: %w", namespace, err)
+		}
+		_, _ = fmt.Fprintf(GinkgoWriter, "Namespace %s already exists, skipping creation.\n", namespace)
+	}
+
+	return nil
+}
