@@ -327,6 +327,9 @@ func getAstarteGenericAPIEnvVars(deploymentName string, cr *apiv2alpha1.Astarte,
 					Value: "true",
 				})
 		}
+
+		ret = appendRabbitMQConnectionEnvVars(ret, "HOUSEKEEPING_AMQP", cr)
+
 	case apiv2alpha1.Pairing:
 		ret = append(ret,
 			v1.EnvVar{
