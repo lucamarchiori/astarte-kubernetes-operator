@@ -1,6 +1,5 @@
 # Astarte Kubernetes Operator
 
-![CI](https://github.com/astarte-platform/astarte-kubernetes-operator/workflows/Operator%20e2e%20tests/badge.svg?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/astarte-platform/astarte-kubernetes-operator)](https://goreportcard.com/report/github.com/astarte-platform/astarte-kubernetes-operator)
 [![License](http://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 ![Docker Pulls](https://img.shields.io/docker/pulls/astarte/astarte-kubernetes-operator)
@@ -98,7 +97,7 @@ Key:
 ## Development
 
 Astarte's Operator is written in Go and built upon [Operator
-SDK](https://github.com/operator-framework/operator-sdk). It depends on Go 1.22, requires Go
+SDK](https://github.com/operator-framework/operator-sdk). It depends on Go 1.23, requires Go
 Modules and Kubernetes v1.24+.
 
-The project is built with kustomize v5.4.2, controller-gen v0.15.0 and conversion-gen v0.27.16.
+The project is built with kustomize v5.4.3, controller-gen v0.16 and conversion-gen v0.27.16.
