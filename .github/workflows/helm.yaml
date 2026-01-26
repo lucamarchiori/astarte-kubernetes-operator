@@ -27,10 +27,10 @@ jobs:
     strategy:
       matrix:
         kubernetesNodeImage:
-        - "kindest/node:v1.33.2@sha256:c55080dc5be4f2cc242e6966fdf97bb62282e1cd818a28223cf536db8b0fddf4"
-        - "kindest/node:v1.32.5@sha256:5d5a4d793d2a3d9727013b8b0cf6c95008c71abeb547759a273ef27e9c564984"
-        - "kindest/node:v1.31.9@sha256:b94a3a6c06198d17f59cca8c6f486236fa05e2fb359cbd75dabbfc348a10b211"
-        - "kindest/node:v1.30.13@sha256:cf819926d6f5ba996f7489fa18a38156f952f5dd172395da7d83f734190e95da"
+        - "kindest/node:v1.33.7"
+        - "kindest/node:v1.32.11"
+        - "kindest/node:v1.31.14"
+        - "kindest/node:v1.30.13"
       fail-fast: false
       
     steps:
@@ -78,18 +78,14 @@ jobs:
       run: |
         sudo sysctl net/netfilter/nf_conntrack_max=131072
 
-    - uses: container-tools/kind-action@v2
-      with:
-        version: "v0.29.0"
-        node_image: "${{ matrix.kubernetesNodeImage }}"
+    - name: Install kind
+      run: go install sigs.k8s.io/kind@v0.31.0
 
-    - name: Build test image
-      run: |
-        docker build -t astarte-operator-ci:test -f Dockerfile .
+    - name: Verify kind installation
+      run: kind version
 
-    - name: Tag test image
-      run: |
-        docker tag astarte-operator-ci:test local-kind-registry/astarte-operator-ci:test
+    - name: Create kind cluster
+      run: kind create cluster --image=${{ matrix.kubernetesNodeImage }}
 
     - name: Ensure KinD is up
       run: |
@@ -100,6 +96,14 @@ jobs:
     - name: Dump cluster info
       run: |
         kubectl cluster-info dump
+
+    - name: Build test image
+      run: |
+        docker build -t astarte-operator-ci:test -f Dockerfile .
+
+    - name: Tag test image
+      run: |
+        docker tag astarte-operator-ci:test local-kind-registry/astarte-operator-ci:test
 
     - name: Load test image to Kind registry
       run: |
