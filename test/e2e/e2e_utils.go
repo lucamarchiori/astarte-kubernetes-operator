@@ -473,6 +473,140 @@ func InstallRabbitMQClusterOperator() error {
 	return nil
 }
 
+func DumpLogsForDebugging() {
+	// List all namespaces, pods, deployments and statefulsets for debugging
+	cmd := exec.Command("kubectl", "get", "pods", "--all-namespaces")
+	output, err := Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump pods: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Pods:\n%s\n", string(output))
+
+	cmd = exec.Command("kubectl", "get", "deployments", "--all-namespaces")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump deployments: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Deployments:\n%s\n", string(output))
+
+	cmd = exec.Command("kubectl", "get", "statefulsets", "--all-namespaces")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump statefulsets: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Statefulsets:\n%s\n", string(output))
+
+	cmd = exec.Command("kubectl", "get", "secrets", "--all-namespaces")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump secrets: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Secrets:\n%s\n", string(output))
+
+	cmd = exec.Command("kubectl", "get", "configmaps", "--all-namespaces")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump configmaps: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Configmaps:\n%s\n", string(output))
+
+	cmd = exec.Command("kubectl", "get", "pvc", "--all-namespaces")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump pvc: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "PVCs:\n%s\n", string(output))
+
+	// Dump Services
+	cmd = exec.Command("kubectl", "get", "services", "--all-namespaces")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump services: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Services:\n%s\n", string(output))
+
+	// Dump Astarte CR
+	cmd = exec.Command("kubectl", "get", "astartes.v2alpha1.api.astarte-platform.org", "--all-namespaces", "-o", "yaml")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump Astarte CRs: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Astarte CRs:\n%s\n", string(output))
+
+	// Describe Astarte CR
+	cmd = exec.Command("kubectl", "describe", "astartes.v2alpha1.api.astarte-platform.org", "--all-namespaces")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to describe Astarte CRs: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Astarte CRs Description:\n%s\n", string(output))
+
+	// Describe Astarte Components
+	cmd = exec.Command("kubectl", "describe", "deployments.apps", "-n", astarteNamespace)
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to describe Astarte deployments: %w", err))
+	}
+
+	// Get logs for each Astarte component
+	cmd = exec.Command("kubectl", "logs", "-n", astarteNamespace, "deployment/astarte-appengine-api")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to get logs for astarte-appengine-api: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Logs for astarte-appengine-api:\n%s\n", string(output))
+
+	cmd = exec.Command("kubectl", "logs", "-n", astarteNamespace, "deployment/astarte-data-updater-plant")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to get logs for astarte-data-updater-plant: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Logs for astarte-data-updater-plant:\n%s\n", string(output))
+
+	cmd = exec.Command("kubectl", "logs", "-n", astarteNamespace, "deployment/astarte-housekeeping")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to get logs for astarte-housekeeping: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Logs for astarte-housekeeping:\n%s\n", string(output))
+
+	cmd = exec.Command("kubectl", "logs", "-n", astarteNamespace, "deployment/astarte-pairing")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to get logs for astarte-pairing: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Logs for astarte-pairing:\n%s\n", string(output))
+
+	cmd = exec.Command("kubectl", "logs", "-n", astarteNamespace, "deployment/astarte-realm-management")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to get logs for astarte-realm-management: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Logs for astarte-realm-management:\n%s\n", string(output))
+
+	cmd = exec.Command("kubectl", "logs", "-n", astarteNamespace, "deployment/astarte-trigger-engine")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to get logs for astarte-trigger-engine: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Logs for astarte-trigger-engine:\n%s\n", string(output))
+
+	// Get logs for Astarte operator
+	cmd = exec.Command("kubectl", "logs", "-n", "astarte-kubernetes-operator-system", "deployment/astarte-operator-controller-manager")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to get logs for Astarte operator: %w", err))
+	}
+	fmt.Fprintf(GinkgoWriter, "Logs for Astarte operator:\n%s\n", string(output))
+
+	// Describe Astarte operator
+	cmd = exec.Command("kubectl", "describe", "deployment/astarte-operator-controller-manager", "-n", "astarte-kubernetes-operator-system")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to describe Astarte operator deployment: %w", err))
+	}
+}
+
 func UninstallRabbitMQClusterOperator() {
 	url := fmt.Sprintf(rabbitmqClusterOperatorURL, rabbitmqClusterOperatorVersion)
 	cmd := exec.Command("kubectl", "delete", "-f", url, "-n", "rabbitmq-system")

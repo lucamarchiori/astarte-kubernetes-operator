@@ -66,6 +66,9 @@ var _ = Describe("controller", Ordered, func() {
 	})
 
 	AfterAll(func() {
+		By("dump logs for debugging")
+		DumpLogsForDebugging()
+
 		By("uninstalling the Prometheus manager bundle")
 		UninstallPrometheusOperator()
 
