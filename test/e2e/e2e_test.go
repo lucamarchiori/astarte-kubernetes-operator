@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	namespace = "astarte-kubernetes-operator-system"
+	operatorNamespace = "astarte-kubernetes-operator-system"
 )
 
 var _ = Describe("controller", Ordered, func() {
@@ -60,12 +60,18 @@ var _ = Describe("controller", Ordered, func() {
 		By("creating the Scylla connection secret")
 		Expect(CreateScyllaConnectionSecret()).To(Succeed())
 
-		By("creating manager namespace")
-		cmd := exec.Command("kubectl", "create", "ns", namespace)
+		By("creating astarte operator namespace")
+		cmd := exec.Command("kubectl", "create", "ns", operatorNamespace)
 		_, _ = Run(cmd)
 	})
 
 	AfterAll(func() {
+		By("dump Astarte Operator info and logs for debugging")
+		DumpAstarteOperatorDebuggingInfo(operatorNamespace)
+
+		By("dump Astarte info and logs for debugging")
+		DumpAstarteDebuggingInfo()
+
 		By("uninstalling the Prometheus manager bundle")
 		UninstallPrometheusOperator()
 
@@ -81,8 +87,8 @@ var _ = Describe("controller", Ordered, func() {
 		By("uninstalling the cert-manager bundle")
 		UninstallCertManager()
 
-		By("removing manager namespace")
-		cmd := exec.Command("kubectl", "delete", "ns", namespace)
+		By("removing astarte operator namespace")
+		cmd := exec.Command("kubectl", "delete", "ns", operatorNamespace)
 		_, _ = Run(cmd)
 	})
 
@@ -118,7 +124,7 @@ var _ = Describe("controller", Ordered, func() {
 						"{{ if not .metadata.deletionTimestamp }}"+
 						"{{ .metadata.name }}"+
 						"{{ \"\\n\" }}{{ end }}{{ end }}",
-					"-n", namespace,
+					"-n", operatorNamespace,
 				)
 
 				podOutput, err := Run(cmd)
@@ -133,7 +139,7 @@ var _ = Describe("controller", Ordered, func() {
 				// Validate pod status
 				cmd = exec.Command("kubectl", "get",
 					"pods", controllerPodName, "-o", "jsonpath={.status.phase}",
-					"-n", namespace,
+					"-n", operatorNamespace,
 				)
 				status, err := Run(cmd)
 				ExpectWithOffset(2, err).NotTo(HaveOccurred())
@@ -244,7 +250,7 @@ var _ = Describe("controller", Ordered, func() {
 						"{{ if not .metadata.deletionTimestamp }}"+
 						"{{ .metadata.name }}"+
 						"{{ \"\\n\" }}{{ end }}{{ end }}",
-					"-n", namespace,
+					"-n", operatorNamespace,
 				)
 
 				podOutput, err := Run(cmd)

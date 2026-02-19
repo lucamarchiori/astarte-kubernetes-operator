@@ -80,21 +80,6 @@ jobs:
         kubectl cluster-info dump
     - name: Run e2e tests
       run: make test-e2e ignore-not-found=true
-    - name: Dump debug info
-      if: failure()
-      run: |
-        kubectl get pods
-        kubectl get deployment
-        kubectl get statefulset
-        kubectl get secrets
-        kubectl get configmaps
-        kubectl get pvc
-        kubectl describe astarte || echo "Astarte already deleted"
-        kubectl logs deployment/example-astarte-flow || echo "No logs"
-        kubectl logs deployment/example-astarte-flow --previous || echo "No logs"
-    - name: Show pod states
-      run: |
-        kubectl get pods
 
   unit-tests:
     concurrency:
