@@ -473,6 +473,46 @@ func InstallRabbitMQClusterOperator() error {
 	return nil
 }
 
+// DumpAstarteOperatorDebuggingInfo dumps Astarte Operator info and logs for debugging purposes.
+func DumpAstarteOperatorDebuggingInfo(operatorNamespace string) {
+	_, _ = fmt.Fprintf(GinkgoWriter, "---- Dumping Astarte Operator info for debugging ----\n")
+
+	// Dump Astarte Operator pods
+	cmd := exec.Command("kubectl", "get", "pods", "-n", operatorNamespace)
+	output, err := Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump pods: %w", err))
+	}
+	_, _ = fmt.Fprintf(GinkgoWriter, "\n\nAstarte Operator Pods:\n%s\n", string(output))
+
+	// Describe Astarte Operator deployment
+	cmd = exec.Command("kubectl", "describe", "deployment/astarte-kubernetes-operator-controller-manager",
+		"-n", operatorNamespace)
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to describe Astarte Operator deployment: %w", err))
+	}
+	_, _ = fmt.Fprintf(GinkgoWriter, "\n\nAstarte Operator Deployment Description:\n%s\n", string(output))
+
+	// Dump YAML for Astarte Operator deployment
+	cmd = exec.Command("kubectl", "get", "deployment/astarte-kubernetes-operator-controller-manager",
+		"-n", operatorNamespace, "-o", "yaml")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to get Astarte Operator deployment YAML: %w", err))
+	}
+	_, _ = fmt.Fprintf(GinkgoWriter, "\n\nAstarte Operator Deployment YAML:\n%s\n", string(output))
+
+	// Dump logs for Astarte Operator controller-manager
+	cmd = exec.Command("kubectl", "logs", "-n", operatorNamespace,
+		"deployment/astarte-kubernetes-operator-controller-manager")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to get logs for Astarte Operator controller-manager: %w", err))
+	}
+	_, _ = fmt.Fprintf(GinkgoWriter, "\n\nLogs for Astarte Operator controller-manager:\n%s\n", string(output))
+}
+
 func UninstallRabbitMQClusterOperator() {
 	url := fmt.Sprintf(rabbitmqClusterOperatorURL, rabbitmqClusterOperatorVersion)
 	cmd := exec.Command("kubectl", "delete", "-f", url, "-n", "rabbitmq-system")
