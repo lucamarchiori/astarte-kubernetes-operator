@@ -69,6 +69,9 @@ var _ = Describe("controller", Ordered, func() {
 		By("dump Astarte Operator info and logs for debugging")
 		DumpAstarteOperatorDebuggingInfo(operatorNamespace)
 
+		By("dump Astarte info and logs for debugging")
+		DumpAstarteDebuggingInfo()
+
 		By("uninstalling the Prometheus manager bundle")
 		UninstallPrometheusOperator()
 

@@ -513,6 +513,47 @@ func DumpAstarteOperatorDebuggingInfo(operatorNamespace string) {
 	_, _ = fmt.Fprintf(GinkgoWriter, "\n\nLogs for Astarte Operator controller-manager:\n%s\n", string(output))
 }
 
+// DumpAstarteDebuggingInfo dumps Astarte info and logs for debugging purposes.
+func DumpAstarteDebuggingInfo() {
+	_, _ = fmt.Fprintf(GinkgoWriter, "---- Dumping Astarte info for debugging ----\n")
+
+	// Dump Astarte pods
+	cmd := exec.Command("kubectl", "get", "pods", "-n", astarteNamespace)
+	output, err := Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump Astarte pods: %w", err))
+	}
+	_, _ = fmt.Fprintf(GinkgoWriter, "\n\nAstarte Pods:\n%s\n", string(output))
+
+	// Dump Astarte statefulsets
+	cmd = exec.Command("kubectl", "get", "statefulsets", "-n", astarteNamespace)
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump Astarte statefulsets: %w", err))
+	}
+	_, _ = fmt.Fprintf(GinkgoWriter, "\n\nAstarte StatefulSets:\n%s\n", string(output))
+
+	// Dump Astarte services
+	cmd = exec.Command("kubectl", "get", "services", "-n", astarteNamespace)
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to dump Astarte services: %w", err))
+	}
+	_, _ = fmt.Fprintf(GinkgoWriter, "\n\nAstarte Services:\n%s\n", string(output))
+
+	// Dump Astarte CR
+	cmd = exec.Command("kubectl", "get", "astartes.v2alpha1.api.astarte-platform.org",
+		astarteName, "-n", astarteNamespace, "-o", "yaml")
+	output, err = Run(cmd)
+	if err != nil {
+		warnError(fmt.Errorf("failed to get Astarte CR YAML: %w", err))
+	}
+	_, _ = fmt.Fprintf(GinkgoWriter, "\n\nAstarte CR YAML:\n%s\n", string(output))
+
+	// Possibly we could also dump the logs for Astarte pods, describe Astarte services, etc.
+	// For now, we focus on the most relevant resources, but we can expand this function as needed.
+}
+
 func UninstallRabbitMQClusterOperator() {
 	url := fmt.Sprintf(rabbitmqClusterOperatorURL, rabbitmqClusterOperatorVersion)
 	cmd := exec.Command("kubectl", "delete", "-f", url, "-n", "rabbitmq-system")
