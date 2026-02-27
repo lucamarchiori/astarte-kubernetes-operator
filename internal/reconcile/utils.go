@@ -574,6 +574,95 @@ func appendAstarteEventsProducerEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte
 	return ret
 }
 
+// appendRabbitMQManagementEnvVars adds the environment variables needed to enable RabbitMQ Management support in Housekeeping.
+// These are only used to interact with the RabbitMQ Management API, and are not used to exchange messages with RabbitMQ.
+func appendRabbitMQManagementEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
+
+	// Fetch our Credentials for RabbitMQ
+	// Currently we make the assumption that the pointers and the credentials for
+	// RabbitMQ management HTTP API are the same as the ones for the RabbitMQ AMQP connection.
+	// To customize this, we would need to add extra fields (e.g. rabbitmqmgmt) in the Astarte CRD but this
+	// is currently not planned.
+	// The only way to customize the following values is to set additional environment variables
+	// in the Housekeeping component, which would override the ones set here.
+
+	rabbitMQHost, _ := misc.GetRabbitMQHostnameAndPort(cr)
+	userCredentialsSecretName, userCredentialsSecretUsernameKey, userCredentialsSecretPasswordKey := misc.GetRabbitMQUserCredentialsSecret(cr)
+
+	ret = append(ret,
+		v1.EnvVar{
+			Name:  "ASTARTE_EVENTS_AMQP_MANAGEMENT_HOST",
+			Value: rabbitMQHost,
+		},
+		v1.EnvVar{
+			Name:  "ASTARTE_EVENTS_AMQP_MANAGEMENT_PORT",
+			Value: "443",
+		},
+		v1.EnvVar{
+			Name: "ASTARTE_EVENTS_AMQP_MANAGEMENT_USERNAME",
+			ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{
+				LocalObjectReference: v1.LocalObjectReference{Name: userCredentialsSecretName},
+				Key:                  userCredentialsSecretUsernameKey,
+			}},
+		},
+		v1.EnvVar{
+			Name: "ASTARTE_EVENTS_AMQP_MANAGEMENT_PASSWORD",
+			ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{
+				LocalObjectReference: v1.LocalObjectReference{Name: userCredentialsSecretName},
+				Key:                  userCredentialsSecretPasswordKey,
+			}},
+		},
+	)
+
+	// SSL
+	ret = appendRabbitMQSSLEnvVars(ret, "ASTARTE_EVENTS_AMQP_MANAGEMENT", cr)
+
+	return ret
+}
+
+// appendRabbitMQSSLEnvVars adds the environment variables needed to enable SSL support for RabbitMQ connections
+// based on the RabbitMQ SSL configuration in the Astarte CR.
+func appendRabbitMQSSLEnvVars(ret []v1.EnvVar, prefix string, cr *apiv2alpha1.Astarte) []v1.EnvVar {
+	spec := cr.Spec.RabbitMQ.Connection.SSLConfiguration
+
+	if !spec.Enable {
+		// SSL is disabled, return as is.
+		return ret
+	}
+
+	ret = append(ret, v1.EnvVar{
+		Name:  prefix + "_SSL_ENABLED",
+		Value: "true",
+	})
+
+	// CA configuration
+	if spec.CustomCASecret.Name != "" {
+		// getAstarteCommonVolumes will mount the volume for us, if we're here. So trust the rest of our code.
+		ret = append(ret, v1.EnvVar{
+			Name:  prefix + "_SSL_CA_FILE",
+			Value: "/rabbitmq-ssl/ca.crt",
+		})
+	}
+
+	// SNI configuration
+	switch {
+	case spec.CustomSNI != "":
+		ret = append(ret, v1.EnvVar{
+			Name:  prefix + "_SSL_CUSTOM_SNI",
+			Value: spec.CustomSNI,
+		})
+	case !pointy.BoolValue(spec.SNI, true):
+		ret = append(ret, v1.EnvVar{
+			Name:  prefix + "_SSL_DISABLE_SNI",
+			Value: "true",
+		})
+	}
+
+	return ret
+}
+
+// appendRabbitMQConnectionEnvVars adds the environment variables needed to connect to RabbitMQ
+// and used to exchange messages AMQP with it, not to interact with the RabbitMQ Management API (see appendRabbitMQManagementEnvVars).
 func appendRabbitMQConnectionEnvVars(ret []v1.EnvVar, prefix string, cr *apiv2alpha1.Astarte) []v1.EnvVar {
 	spec := cr.Spec.RabbitMQ.Connection
 
@@ -588,35 +677,7 @@ func appendRabbitMQConnectionEnvVars(ret []v1.EnvVar, prefix string, cr *apiv2al
 	}
 
 	// SSL
-	if spec.SSLConfiguration.Enable {
-		ret = append(ret, v1.EnvVar{
-			Name:  prefix + "_SSL_ENABLED",
-			Value: "true",
-		})
-
-		// CA configuration
-		if spec.SSLConfiguration.CustomCASecret.Name != "" {
-			// getAstarteCommonVolumes will mount the volume for us, if we're here. So trust the rest of our code.
-			ret = append(ret, v1.EnvVar{
-				Name:  prefix + "_SSL_CA_FILE",
-				Value: "/rabbitmq-ssl/ca.crt",
-			})
-		}
-
-		// SNI configuration
-		switch {
-		case spec.SSLConfiguration.CustomSNI != "":
-			ret = append(ret, v1.EnvVar{
-				Name:  prefix + "_SSL_CUSTOM_SNI",
-				Value: spec.SSLConfiguration.CustomSNI,
-			})
-		case !pointy.BoolValue(spec.SSLConfiguration.SNI, true):
-			ret = append(ret, v1.EnvVar{
-				Name:  prefix + "_SSL_DISABLE_SNI",
-				Value: "true",
-			})
-		}
-	}
+	ret = appendRabbitMQSSLEnvVars(ret, prefix, cr)
 
 	// Fetch our Credentials for RabbitMQ
 	rabbitMQHost, rabbitMQPort := misc.GetRabbitMQHostnameAndPort(cr)
