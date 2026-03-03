@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   endpoints, pods and services.
 - Add experimental support for FIDO Device Onboard (FDO) in Astarte Pairing. The feature
   can be enabled and configured through the `features.fdo` field in the Astarte CR.
+- Add experimental support to hidden sidebar feature in the Astarte Dashboard.
 
 ### Changed
 - Forward port changes from release-24.5

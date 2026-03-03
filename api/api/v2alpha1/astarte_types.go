@@ -27,6 +27,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Supported custom annotations in Astarte CR.
+const (
+	// AnnotationHideDashboardSidebar allows to hide the Dashboard sidebar.
+	// It is propagated to the Astarte Dashboard configmap
+	// Value: "true" or "false"
+	AnnotationHideDashboardSidebar = "api.astarte-platform.org/hide-dashboard-sidebar"
+)
+
 // AstarteSpec defines the desired state of Astarte
 type AstarteSpec struct {
 	// The Astarte Version for this Resource
