@@ -174,6 +174,7 @@ func getAstarteDashboardPodSpec(cr *apiv2alpha1.Astarte, dashboard apiv2alpha1.A
 
 func getAstarteDashboardConfigMapData(cr *apiv2alpha1.Astarte, dashboard apiv2alpha1.AstarteDashboardSpec) map[string]string {
 	dashboardConfig := make(map[string]interface{})
+	dashboardConfigUi := make(map[string]interface{})
 
 	dashboardConfig["astarte_api_url"] = getBaseAstarteAPIURL(cr)
 	dashboardConfig["enable_flow_preview"] = misc.IsAstarteComponentDeployed(cr, apiv2alpha1.FlowComponent)
@@ -209,6 +210,12 @@ func getAstarteDashboardConfigMapData(cr *apiv2alpha1.Astarte, dashboard apiv2al
 	} else {
 		dashboardConfig["auth"] = []apiv2alpha1.AstarteDashboardConfigAuthSpec{{Type: "token"}}
 	}
+
+	dashboardConfigUi["hideSidebar"] = false
+	if b, ok := cr.GetAnnotations()[apiv2alpha1.AnnotationHideDashboardSidebar]; ok && b == "true" { // nolint:goconst
+		dashboardConfigUi["hideSidebar"] = true
+	}
+	dashboardConfig["ui"] = dashboardConfigUi
 
 	configJSON, _ := json.Marshal(dashboardConfig)
 

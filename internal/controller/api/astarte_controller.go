@@ -201,6 +201,15 @@ func (r *AstarteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool { return true },
 		DeleteFunc: func(e event.DeleteEvent) bool { return true },
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Check for specific annotation updates
+			oldAnnotations := e.ObjectOld.GetAnnotations()
+			newAnnotations := e.ObjectNew.GetAnnotations()
+			valueOld := oldAnnotations[apiv2alpha1.AnnotationHideDashboardSidebar]
+			valueNew := newAnnotations[apiv2alpha1.AnnotationHideDashboardSidebar]
+			if valueNew != valueOld {
+				return true
+			}
+
 			// Ignore updates to CR status in which case metadata.Generation does not change
 			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
 		},

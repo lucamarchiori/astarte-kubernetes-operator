@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   can be enabled and configured through the `features.fdo` field in the Astarte CR.
 - Add `managementConnection` field to the Astarte CRD under the RabbitMQ spec to 
   allow granular configuration of RabbitMQ management API connection parameters.
+- Add experimental support to hidden sidebar feature in the Astarte Dashboard.
 
 ### Changed
 - Forward port changes from release-24.5
