@@ -36,13 +36,14 @@ import (
 
 var _ = Describe("VerneMQ testing", Ordered, Serial, func() {
 	const (
-		CustomAstarteName      = "example-astarte"
-		CustomAstarteNamespace = "vernemq-test"
-		CustomRabbitMQHost     = "custom-rabbitmq-host"
-		CustomRabbitMQPort     = 5673
-		CustomVerneMQHost      = "broker.astarte-example.com"
-		CustomVerneMQPort      = 8884
-		AstarteVersion         = "1.3.0"
+		CustomAstarteName            = "example-astarte"
+		CustomAstarteNamespace       = "vernemq-test"
+		CustomRabbitMQHost           = "custom-rabbitmq-host"
+		CustomRabbitMQPort           = 5673
+		CustomRabbitMQManagementPort = 80
+		CustomVerneMQHost            = "broker.astarte-example.com"
+		CustomVerneMQPort            = 8884
+		AstarteVersion               = "1.3.0"
 	)
 
 	var cr *apiv2alpha1.Astarte
@@ -62,6 +63,8 @@ var _ = Describe("VerneMQ testing", Ordered, Serial, func() {
 		cr.SetResourceVersion("")
 		cr.Spec.RabbitMQ.Connection.Host = CustomRabbitMQHost
 		cr.Spec.RabbitMQ.Connection.Port = pointy.Int32(CustomRabbitMQPort)
+		cr.Spec.RabbitMQ.ManagementConnection.Host = CustomRabbitMQHost
+		cr.Spec.RabbitMQ.ManagementConnection.Port = pointy.Int32(CustomRabbitMQManagementPort)
 		cr.Spec.VerneMQ.Deploy = pointy.Bool(true)
 		cr.Spec.VerneMQ.Host = CustomVerneMQHost
 		cr.Spec.VerneMQ.Port = pointy.Int32(CustomVerneMQPort)

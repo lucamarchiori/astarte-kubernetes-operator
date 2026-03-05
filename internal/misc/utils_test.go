@@ -39,15 +39,16 @@ import (
 
 var _ = Describe("Misc utils testing", Ordered, Serial, func() {
 	const (
-		CustomSecretName       = "custom-secret"
-		CustomUsernameKey      = "usr"
-		CustomPasswordKey      = "pwd"
-		CustomAstarteName      = "example-astarte"
-		CustomAstarteNamespace = "utils-test"
-		CustomRabbitMQHost     = "rabbitmq.example.com"
-		CustomRabbitMQPort     = 5672
-		CustomVerneMQHost      = "broker.astarte-example.com"
-		CustomVerneMQPort      = 8883
+		CustomSecretName             = "custom-secret"
+		CustomUsernameKey            = "usr"
+		CustomPasswordKey            = "pwd"
+		CustomAstarteName            = "example-astarte"
+		CustomAstarteNamespace       = "utils-test"
+		CustomRabbitMQHost           = "rabbitmq.example.com"
+		CustomRabbitMQPort           = 5672
+		CustomRabbitMQManagementPort = 80
+		CustomVerneMQHost            = "broker.astarte-example.com"
+		CustomVerneMQPort            = 8883
 	)
 
 	var log logr.Logger
@@ -942,7 +943,9 @@ var _ = Describe("Misc utils testing", Ordered, Serial, func() {
 		BeforeEach(func() {
 			cr.Spec.RabbitMQ.Connection = &v2alpha1.AstarteRabbitMQConnectionSpec{}
 			cr.Spec.RabbitMQ.Connection.Host = CustomRabbitMQHost
+			cr.Spec.RabbitMQ.ManagementConnection.Host = CustomRabbitMQHost
 			cr.Spec.RabbitMQ.Connection.Port = pointy.Int32(CustomRabbitMQPort)
+			cr.Spec.RabbitMQ.ManagementConnection.Port = pointy.Int32(CustomRabbitMQManagementPort)
 		})
 
 		Context("When retrieving RabbitMQ host and port", func() {
@@ -960,7 +963,8 @@ var _ = Describe("Misc utils testing", Ordered, Serial, func() {
 			BeforeEach(func() {
 				cr.Spec = v2alpha1.AstarteSpec{
 					RabbitMQ: v2alpha1.AstarteRabbitMQSpec{
-						Connection: &v2alpha1.AstarteRabbitMQConnectionSpec{},
+						Connection:           &v2alpha1.AstarteRabbitMQConnectionSpec{},
+						ManagementConnection: &v2alpha1.AstarteRabbitMQBaseConnectionSpec{},
 					},
 				}
 			})
@@ -1032,6 +1036,14 @@ var _ = Describe("Misc utils testing", Ordered, Serial, func() {
 					// Ensure RabbitMQ connection is configured to avoid nil dereference
 					cr.Spec.RabbitMQ = v2alpha1.AstarteRabbitMQSpec{
 						Connection: &v2alpha1.AstarteRabbitMQConnectionSpec{
+							AstarteRabbitMQBaseConnectionSpec: v2alpha1.AstarteRabbitMQBaseConnectionSpec{
+								HostAndPort: v2alpha1.HostAndPort{
+									Host: CustomRabbitMQHost,
+									Port: pointy.Int32(CustomRabbitMQPort),
+								},
+							},
+						},
+						ManagementConnection: &v2alpha1.AstarteRabbitMQBaseConnectionSpec{
 							HostAndPort: v2alpha1.HostAndPort{
 								Host: CustomRabbitMQHost,
 								Port: pointy.Int32(CustomRabbitMQPort),

@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   endpoints, pods and services.
 - Add experimental support for FIDO Device Onboard (FDO) in Astarte Pairing. The feature
   can be enabled and configured through the `features.fdo` field in the Astarte CR.
+- Add `managementConnection` field to the Astarte CRD under the RabbitMQ spec to 
+  allow granular configuration of RabbitMQ management API connection parameters.
 
 ### Changed
 - Forward port changes from release-24.5

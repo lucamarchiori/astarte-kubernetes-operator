@@ -25,7 +25,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"gopkg.in/yaml.v2"
+	"k8s.io/apimachinery/pkg/util/yaml"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	// +kubebuilder:scaffold:imports
