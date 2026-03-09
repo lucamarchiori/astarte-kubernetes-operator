@@ -31,7 +31,19 @@ import (
 )
 
 // buildContentSecurityPolicy builds the Content-Security-Policy header value
-func buildContentSecurityPolicy(parent *apiv2alpha1.Astarte) (r string) {
+func buildContentSecurityPolicy(cr *ingressv2alpha1.AstarteDefaultIngress, parent *apiv2alpha1.Astarte) (r string) {
+
+	// If the custom CSP annotation is set, return its value as CSP header value.
+	if v, ok := cr.GetAnnotations()[ingressv2alpha1.AnnotationCustomCSP]; ok {
+		return v
+	}
+
+	// Set default frameAncestors and override if annotation is set
+	frameAncestors := "'self'"
+	if v, ok := cr.GetAnnotations()[ingressv2alpha1.AnnotationCustomCSPFrameAncestors]; ok {
+		frameAncestors = v
+	}
+
 	backend := parent.Spec.API.Host
 	var parts []string
 
@@ -64,6 +76,9 @@ func buildContentSecurityPolicy(parent *apiv2alpha1.Astarte) (r string) {
 
 	// BLOCK <base> tag injection
 	parts = append(parts, "base-uri 'self'")
+
+	// Restrict embedding of this application in frames.
+	parts = append(parts, fmt.Sprintf("frame-ancestors %s", frameAncestors))
 
 	// STRICT scripts: Only allow from self.
 	// Note: This blocks also inline scripts and eval().
@@ -102,8 +117,7 @@ func getCommonIngressAnnotations(cr *ingressv2alpha1.AstarteDefaultIngress, pare
 		"haproxy.org/backend-config-snippet": getHAProxyBackendConfig(parent),
 		"haproxy.org/ssl-redirect":           strconv.FormatBool(apiSslRedirect),
 		"haproxy.org/response-set-header": "\n" +
-			"X-Frame-Options SAMEORIGIN\n" +
-			"Content-Security-Policy " + buildContentSecurityPolicy(parent) + "\n" +
+			"Content-Security-Policy " + buildContentSecurityPolicy(cr, parent) + "\n" +
 			"X-Content-Type-Options nosniff\n" +
 			"Referrer-Policy no-referrer-when-downgrade",
 	}

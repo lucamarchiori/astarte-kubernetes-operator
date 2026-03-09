@@ -35,6 +35,17 @@ const (
 	AnnotationIngressControllerSelector = "ingress.astarte-platform.org/ingress-controller-selector"
 	HAProxySelectorValue                = "haproxy.org"
 	NGINXSelectorValue                  = "nginx.ingress.kubernetes.io"
+	// AnnotationCustomCSPFrameAncestors can be used to override only the
+	// frame-ancestors directive in the default Content-Security-Policy (CSP)
+	// header set on the Ingress resource created by ADI.
+	// This annotation is ignored when AnnotationCustomCSP is set, since
+	// AnnotationCustomCSP fully replaces the whole CSP header value.
+	AnnotationCustomCSPFrameAncestors = "ingress.astarte-platform.org/frame-ancestors"
+	// AnnotationCustomCSP can be used to override the Content-Security-Policy (CSP) header
+	// set by default on the Ingress resource created by ADI. The value of this annotation
+	// fully replaces the CSP header value, overriding anything configured automatically,
+	// manually, or through annotations such as "ingress.astarte-platform.org/frame-ancestors".
+	AnnotationCustomCSP = "ingress.astarte-platform.org/content-security-policy"
 )
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
@@ -78,8 +89,19 @@ type AstarteDefaultIngressStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=adi
-
 // AstarteDefaultIngress is the Schema for the astartedefaultingresses API
+//
+// **Custom ADI annotations**
+//
+// Custom Content-Security-Policy
+// - Annotation: `ingress.astarte-platform.org/content-security-policy`
+// - Values: `string` (valid Content-Security-Policy header value)
+// - Description: This annotation allows you to specify a custom Content Security Policy for the Astarte Operator's ingress. If this annotation is set, it wil override the default Content Security Policy defined by the Astarte Operator and any value set in the `custom-frame-ancestors` annotation.
+//
+// Custom frame-ancestors
+// - Annotation: `ingress.astarte-platform.org/frame-ancestors`
+// - Values: `string` (valid frame-ancestors directive value)
+// - Description: This annotation allows you to specify custom frame ancestors for the Astarte Operator's ingress. If not set, the default value is `frame-ancestors 'self'`.
 type AstarteDefaultIngress struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
