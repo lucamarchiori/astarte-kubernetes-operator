@@ -148,7 +148,7 @@ func getAstarteDashboardPodSpec(cr *apiv2alpha1.Astarte, dashboard apiv2alpha1.A
 				Image:           getAstarteImageForClusteredResource(component.DockerImageName(), dashboard.AstarteGenericClusteredResource, cr),
 				ImagePullPolicy: getImagePullPolicy(cr, cr.Spec.Components.Dashboard.AstarteGenericClusteredResource),
 				Resources:       misc.GetResourcesForAstarteComponent(cr, dashboard.Resources, component),
-				Env:             getAstarteDashboardEnvVars(),
+				Env:             getAstarteDashboardEnvVars(dashboard),
 			},
 		},
 		Volumes: getAstarteDashboardVolumes(cr),
@@ -246,12 +246,16 @@ func getAstarteDashboardVolumeMounts() []v1.VolumeMount {
 	return ret
 }
 
-func getAstarteDashboardEnvVars() []v1.EnvVar {
+func getAstarteDashboardEnvVars(dashboard apiv2alpha1.AstarteDashboardSpec) []v1.EnvVar {
 	ret := []v1.EnvVar{
 		{
 			Name:      "MY_POD_IP",
 			ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "status.podIP"}},
 		},
+	}
+
+	if len(dashboard.AdditionalEnv) > 0 {
+		ret = append(ret, dashboard.AdditionalEnv...)
 	}
 
 	return ret

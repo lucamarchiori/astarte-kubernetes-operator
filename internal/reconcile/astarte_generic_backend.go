@@ -201,8 +201,6 @@ func getAstarteGenericBackendEnvVars(deploymentName string, replicaIndex, replic
 		ret = append(ret, getAstarteDataUpdaterPlantBackendEnvVars(replicaIndex, replicas, cr)...)
 	case apiv2alpha1.TriggerEngine:
 		ret = append(ret, getTriggerEngineBackendEnvVars(cr)...)
-	case apiv2alpha1.Dashboard:
-		// Nothing special for now
 	}
 
 	// Add any additional env vars

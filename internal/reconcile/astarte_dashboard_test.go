@@ -216,5 +216,34 @@ var _ = Describe("Astarte Dashboard reconcile tests", Ordered, Serial, func() {
 			Expect(cfg["default_realm"]).To(Equal("myrealm"))
 			Expect(cfg["default_auth"]).To(Equal("token"))
 		})
+
+		It("should add additionalEnv to the deployment", func() {
+			cr.Spec.Components.Dashboard.Deploy = pointy.Bool(true)
+			cr.Spec.Components.Dashboard.AdditionalEnv = []v1.EnvVar{
+				{
+					Name:  "CUSTOM_ENV",
+					Value: "custom_value",
+				},
+			}
+			Expect(k8sClient.Update(context.Background(), cr)).To(Succeed())
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr)
+			}, Timeout, Interval).Should(Succeed())
+
+			Expect(EnsureAstarteDashboard(cr, cr.Spec.Components.Dashboard, k8sClient, scheme.Scheme)).To(Succeed())
+
+			dep := &appsv1.Deployment{}
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: cr.Name + "-dashboard", Namespace: cr.Namespace}, dep)).To(Succeed())
+
+			envs := dep.Spec.Template.Spec.Containers[0].Env
+			found := false
+			for _, env := range envs {
+				if env.Name == "CUSTOM_ENV" && env.Value == "custom_value" {
+					found = true
+					break
+				}
+			}
+			Expect(found).To(BeTrue())
+		})
 	})
 })
