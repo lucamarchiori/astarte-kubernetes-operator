@@ -3,7 +3,7 @@
 /*
 This file is part of Astarte.
 
-Copyright 2020-25 SECO Mind Srl.
+Copyright 2020-26 SECO Mind Srl.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ package v2alpha1
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
