@@ -66,12 +66,6 @@ var _ = Describe("controller", Ordered, func() {
 	})
 
 	AfterAll(func() {
-		By("dump Astarte Operator info and logs for debugging")
-		DumpAstarteOperatorDebuggingInfo(operatorNamespace)
-
-		By("dump Astarte info and logs for debugging")
-		DumpAstarteDebuggingInfo()
-
 		By("uninstalling the Prometheus manager bundle")
 		UninstallPrometheusOperator()
 
@@ -167,7 +161,7 @@ var _ = Describe("controller", Ordered, func() {
 
 				By(fmt.Sprintf("ensuring that the Astarte v%s health becomes green", k))
 				EventuallyWithOffset(1,
-					EnsureAstarteHealthGreen,
+					EnsureAstarteWithInfoDump,
 					DefaultTimeout,
 					DefaultRetryInterval,
 				).Should(Succeed())
@@ -235,6 +229,9 @@ var _ = Describe("controller", Ordered, func() {
 					DefaultRetryInterval,
 				).Should(Succeed())
 			}
+
+			By("dump Astarte Operator info and logs for debugging")
+			DumpAstarteOperatorDebuggingInfo(operatorNamespace)
 
 			By("undeploying the controller-manager")
 			cmd = exec.Command("make", "undeploy")

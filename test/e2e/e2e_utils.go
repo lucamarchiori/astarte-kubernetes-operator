@@ -193,6 +193,12 @@ func EnsureAstarteHealthGreen() error {
 	return err
 }
 
+func EnsureAstarteWithInfoDump() error {
+	err := EnsureAstarteHealthGreen()
+	DumpAstarteDebuggingInfo()
+	return err
+}
+
 func DeleteRabbitMQConnectionSecret() error {
 	cmd := exec.Command("kubectl", "delete", "secret",
 		"rabbitmq-connection-secret",
