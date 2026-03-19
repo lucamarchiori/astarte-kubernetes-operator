@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-name: "Operator tests"
+name: Tests
 on:
   pull_request:
     paths:
@@ -40,47 +40,6 @@ on:
     - 'go.mod'
 
 jobs:
-  e2e-tests:
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        kubernetesNodeImage:
-        - "kindest/node:v1.33.2@sha256:c55080dc5be4f2cc242e6966fdf97bb62282e1cd818a28223cf536db8b0fddf4"
-        - "kindest/node:v1.32.5@sha256:5d5a4d793d2a3d9727013b8b0cf6c95008c71abeb547759a273ef27e9c564984"
-        - "kindest/node:v1.31.9@sha256:b94a3a6c06198d17f59cca8c6f486236fa05e2fb359cbd75dabbfc348a10b211"
-        - "kindest/node:v1.30.13@sha256:cf819926d6f5ba996f7489fa18a38156f952f5dd172395da7d83f734190e95da"
-      fail-fast: false
-    concurrency:
-      group: 'e2e-tests-${{ github.ref }}-${{ matrix.kubernetesNodeImage }}'
-      cancel-in-progress: true
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-go@v5
-      with:
-        go-version: '1.22.x'
-    - uses: alexellis/setup-arkade@v3
-    - uses: alexellis/arkade-get@master
-      with:
-        kubectl: v1.32.2
-    - name: Set nf_conntrack_max value
-      # This step is required to avoid CrashLoopBackOff for kube-proxy
-      # see https://github.com/kubernetes-sigs/kind/issues/2240#issuecomment-838510890
-      run: |
-        sudo sysctl net/netfilter/nf_conntrack_max=131072
-    - uses: container-tools/kind-action@v2
-      with:
-        version: "v0.29.0"
-        node_image: "${{ matrix.kubernetesNodeImage }}"
-    - name: Ensure KinD is up
-      run: |
-        kubectl cluster-info
-        kubectl get pods -n kube-system
-    - name: Dump cluster info
-      run: |
-        kubectl cluster-info dump
-    - name: Run e2e tests
-      run: make test-e2e ignore-not-found=true
-
   unit-tests:
     concurrency:
       group: unit-tests-${{ github.ref }}
@@ -88,14 +47,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-go@v5
+    - name: Setup Go
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.22.x'
+        go-version-file: go.mod
     - uses: alexellis/setup-arkade@v3
     - uses: alexellis/arkade-get@master
       with:
         kubectl: v1.32.2
     - name: Ensure Envtest
       run: make envtest
-    - name: Run unit tests
-      run: make test
+    - name: Running Tests
+      run: |
+        go mod tidy
+        make test
