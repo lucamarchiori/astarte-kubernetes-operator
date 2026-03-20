@@ -355,17 +355,25 @@ type GenericSSLConfigurationSpec struct {
 	CustomSNI string `json:"customSNI,omitempty"`
 }
 
-type AstarteRabbitMQConnectionSpec struct {
+type AstarteRabbitMQBaseConnectionSpec struct {
 	HostAndPort `json:",inline"`
 	// +kubebuilder:validation:Optional
 	GenericConnectionSpec `json:",inline"`
+}
+
+type AstarteRabbitMQConnectionSpec struct {
+	AstarteRabbitMQBaseConnectionSpec `json:",inline"`
 	// +kubebuilder:validation:Optional
 	VirtualHost string `json:"virtualHost,omitempty"`
 }
 
 type AstarteRabbitMQSpec struct {
+	// RabbitMQ AMQP connection details
 	// +kubebuilder:validation:Required
 	Connection *AstarteRabbitMQConnectionSpec `json:"connection,omitempty"`
+	// RabbitMQ management APIs connection details
+	// +kubebuilder:validation:Required
+	ManagementConnection *AstarteRabbitMQBaseConnectionSpec `json:"managementConnection,omitempty"`
 	// Configures the data queues prefix on RabbitMQ. You should change this setting only
 	// in custom RabbitMQ installations.
 	// +kubebuilder:validation:Optional

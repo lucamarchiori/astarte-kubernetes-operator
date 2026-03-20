@@ -21,6 +21,13 @@ spec:
         name: "rabbitmq-connection-secret"
         usernameKey: "username"
         passwordKey: "password"
+    managementConnection:
+      host: "rabbitmq.rabbitmq.svc.cluster.local"
+      port: 80
+      credentialsSecret:
+        name: "rabbitmq-connection-secret"
+        usernameKey: "username"
+        passwordKey: "password"
   # Cassandra/ScyllaDB can be deployed either in cluster or out of cluster.
   # What follows is just an in-cluster example.
   cassandra:

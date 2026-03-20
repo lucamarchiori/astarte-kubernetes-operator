@@ -578,25 +578,29 @@ func appendAstarteEventsProducerEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte
 // These are only used to interact with the RabbitMQ Management API, and are not used to exchange messages with RabbitMQ.
 func appendRabbitMQManagementEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
 
-	// Fetch our Credentials for RabbitMQ
-	// Currently we make the assumption that the pointers and the credentials for
-	// RabbitMQ management HTTP API are the same as the ones for the RabbitMQ AMQP connection.
-	// To customize this, we would need to add extra fields (e.g. rabbitmqmgmt) in the Astarte CRD but this
-	// is currently not planned.
-	// The only way to customize the following values is to set additional environment variables
-	// in the Housekeeping component, which would override the ones set here.
+	if cr.Spec.RabbitMQ.ManagementConnection == nil {
+		return ret
+	}
 
-	rabbitMQHost, _ := misc.GetRabbitMQHostnameAndPort(cr)
-	userCredentialsSecretName, userCredentialsSecretUsernameKey, userCredentialsSecretPasswordKey := misc.GetRabbitMQUserCredentialsSecret(cr)
+	defPort := int32(80)
+	if cr.Spec.RabbitMQ.ManagementConnection.SSLConfiguration.Enable {
+		defPort = 443
+	}
+
+	// Handle default values
+	host := cr.Spec.RabbitMQ.ManagementConnection.Host
+	port := pointy.Int32Value(cr.Spec.RabbitMQ.ManagementConnection.Port, defPort)
+
+	userCredentialsSecretName, userCredentialsSecretUsernameKey, userCredentialsSecretPasswordKey := misc.GetRabbitMQManagementUserCredentialsSecret(cr)
 
 	ret = append(ret,
 		v1.EnvVar{
 			Name:  "ASTARTE_EVENTS_AMQP_MANAGEMENT_HOST",
-			Value: rabbitMQHost,
+			Value: host,
 		},
 		v1.EnvVar{
 			Name:  "ASTARTE_EVENTS_AMQP_MANAGEMENT_PORT",
-			Value: "443",
+			Value: fmt.Sprint(port),
 		},
 		v1.EnvVar{
 			Name: "ASTARTE_EVENTS_AMQP_MANAGEMENT_USERNAME",
@@ -615,18 +619,16 @@ func appendRabbitMQManagementEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) [
 	)
 
 	// SSL
-	ret = appendRabbitMQSSLEnvVars(ret, "ASTARTE_EVENTS_AMQP_MANAGEMENT", cr)
+	ret = appendRabbitMQSSLEnvVars(ret, "ASTARTE_EVENTS_AMQP_MANAGEMENT", cr.Spec.RabbitMQ.ManagementConnection)
 
 	return ret
 }
 
 // appendRabbitMQSSLEnvVars adds the environment variables needed to enable SSL support for RabbitMQ connections
 // based on the RabbitMQ SSL configuration in the Astarte CR.
-func appendRabbitMQSSLEnvVars(ret []v1.EnvVar, prefix string, cr *apiv2alpha1.Astarte) []v1.EnvVar {
-	spec := cr.Spec.RabbitMQ.Connection.SSLConfiguration
-
-	if !spec.Enable {
-		// SSL is disabled, return as is.
+func appendRabbitMQSSLEnvVars(ret []v1.EnvVar, prefix string, connSpec *apiv2alpha1.AstarteRabbitMQBaseConnectionSpec) []v1.EnvVar {
+	if connSpec == nil || !connSpec.SSLConfiguration.Enable {
+		// SSL is disabled or not set, return as is.
 		return ret
 	}
 
@@ -636,7 +638,7 @@ func appendRabbitMQSSLEnvVars(ret []v1.EnvVar, prefix string, cr *apiv2alpha1.As
 	})
 
 	// CA configuration
-	if spec.CustomCASecret.Name != "" {
+	if connSpec.SSLConfiguration.CustomCASecret.Name != "" {
 		// getAstarteCommonVolumes will mount the volume for us, if we're here. So trust the rest of our code.
 		ret = append(ret, v1.EnvVar{
 			Name:  prefix + "_SSL_CA_FILE",
@@ -646,12 +648,12 @@ func appendRabbitMQSSLEnvVars(ret []v1.EnvVar, prefix string, cr *apiv2alpha1.As
 
 	// SNI configuration
 	switch {
-	case spec.CustomSNI != "":
+	case connSpec.SSLConfiguration.CustomSNI != "":
 		ret = append(ret, v1.EnvVar{
 			Name:  prefix + "_SSL_CUSTOM_SNI",
-			Value: spec.CustomSNI,
+			Value: connSpec.SSLConfiguration.CustomSNI,
 		})
-	case !pointy.BoolValue(spec.SNI, true):
+	case !pointy.BoolValue(connSpec.SSLConfiguration.SNI, true):
 		ret = append(ret, v1.EnvVar{
 			Name:  prefix + "_SSL_DISABLE_SNI",
 			Value: "true",
@@ -677,7 +679,7 @@ func appendRabbitMQConnectionEnvVars(ret []v1.EnvVar, prefix string, cr *apiv2al
 	}
 
 	// SSL
-	ret = appendRabbitMQSSLEnvVars(ret, prefix, cr)
+	ret = appendRabbitMQSSLEnvVars(ret, prefix, &spec.AstarteRabbitMQBaseConnectionSpec)
 
 	// Fetch our Credentials for RabbitMQ
 	rabbitMQHost, rabbitMQPort := misc.GetRabbitMQHostnameAndPort(cr)
