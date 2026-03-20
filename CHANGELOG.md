@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add `managementConnection` field to the Astarte CRD under the RabbitMQ spec to 
   allow granular configuration of RabbitMQ management API connection parameters.
 - Add experimental support to hidden sidebar feature in the Astarte Dashboard.
+- Add ADI annotations to customize Content Security Policy header.
 
 ### Changed
 - Forward port changes from release-24.5

@@ -130,16 +130,31 @@ func (r *AstarteDefaultIngressReconciler) SetupWithManager(mgr ctrl.Manager) err
 		DeleteFunc: func(e event.DeleteEvent) bool { return true },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Ignore updates to CR status in which case metadata.Generation does not change
-			// However, also trigger on annotation changes (specifically the ingress controller selector)
-			if e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() {
-				return true
-			}
+			// However, also trigger on annotation changes
 			// Check if the ingress controller selector annotation changed
 			oldAnnotations := e.ObjectOld.GetAnnotations()
 			newAnnotations := e.ObjectNew.GetAnnotations()
-			oldSelector := oldAnnotations[ingressv2alpha1.AnnotationIngressControllerSelector]
-			newSelector := newAnnotations[ingressv2alpha1.AnnotationIngressControllerSelector]
-			return oldSelector != newSelector
+			valueOld := oldAnnotations[ingressv2alpha1.AnnotationIngressControllerSelector]
+			valueNew := newAnnotations[ingressv2alpha1.AnnotationIngressControllerSelector]
+			if valueNew != valueOld {
+				return true
+			}
+
+			// Check for CSP Frame Ancestors annotation changes
+			valueOld = oldAnnotations[ingressv2alpha1.AnnotationCustomCSPFrameAncestors]
+			valueNew = newAnnotations[ingressv2alpha1.AnnotationCustomCSPFrameAncestors]
+			if valueNew != valueOld {
+				return true
+			}
+
+			// Check for CSP annotation changes
+			valueOld = oldAnnotations[ingressv2alpha1.AnnotationCustomCSP]
+			valueNew = newAnnotations[ingressv2alpha1.AnnotationCustomCSP]
+			if valueNew != valueOld {
+				return true
+			}
+
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
 		},
 	}
 
