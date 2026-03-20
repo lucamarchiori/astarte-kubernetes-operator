@@ -16,6 +16,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// +kubebuilder:object:generate=true
+// +groupName=api.astarte-platform.org
 package v2alpha1
 
 import (
@@ -25,6 +27,14 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// Supported custom annotations in Astarte CR.
+const (
+	// AnnotationHideDashboardSidebar allows to hide the Dashboard sidebar.
+	// It is propagated to the Astarte Dashboard configmap
+	// Value: "true" or "false"
+	AnnotationHideDashboardSidebar = "api.astarte-platform.org/hide-dashboard-sidebar"
 )
 
 // AstarteSpec defines the desired state of Astarte
@@ -85,8 +95,18 @@ type AstarteStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
 // Astarte is the Schema for the astartes API
+//
+// **Custom Astarte annotations**
+// Astarte support a set of custom annotations that can be used to
+// toggle custom behaviors that are not directly supported by the CRD schema.
+// This is often the case for features that are still experimental,
+// or that are not expected to be widely used, and that would therefore
+// add unnecessary complexity to the CRD schema.
+//
+// Enable or disable the Astarte Dashboard sidebar
+// - Annotation: `api.astarte-platform.org/hide-dashboard-sidebar`
+// - Values: `"true"` or `"false"`
 type Astarte struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
