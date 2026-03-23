@@ -1,6 +1,6 @@
 # astarte-operator
 
-![Version: 25.5.0-dev](https://img.shields.io/badge/Version-25.5.0--dev-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.5.0-dev](https://img.shields.io/badge/AppVersion-25.5.0--dev-informational?style=flat-square)
+![Version: 26.5.0-dev](https://img.shields.io/badge/Version-26.5.0--dev-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 26.5.0-dev](https://img.shields.io/badge/AppVersion-26.5.0--dev-informational?style=flat-square)
 
 The Astarte Kubernetes Operator Helm Chart.
 
@@ -12,6 +12,8 @@ The Astarte Kubernetes Operator Helm Chart.
 | ---- | ------ | --- |
 | matt-mazzucato | mattia.mazzucato@secomind.com |  |
 | annopaolo | arnaldo.cesco@secomind.com |  |
+| lucamarchiori | luca.marchiori@secomind.com |  |
+| guicrocetti | guilherme.crocetti@secomind.com |  |
 
 ## Source Code
 

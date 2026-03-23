@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: local-registry/astarte-kubernetes-operator
-  newTag: 25.5.0-dev
+  newTag: 26.5.0-dev
