@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [25.5.0] - Unreleased
+## [26.5.0] - Unreleased
 ### Added
 - Add v2alpha1 API version for the api.astarte-platform.org group.
 - Add v2alpha1 API version for the flow.astarte-platform.org group.
@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Fix the propagation of replicaCount, installCrds, and pullPolicy values
   in values.yaml during Helm chart installation.
-- Fix E2E tests for Astarte v1.3+ and Astarte Operator v25.5+.
+- Fix E2E tests for Astarte v1.3+ and Astarte Operator v26.5+.
 - Fix HPA race condition on initialization (#397).
   If the HPA reports 0 desired replicas, the operator will ignore the HPA and use
   the replica count from the Astarte custom resource instead.
