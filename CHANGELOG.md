@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Forward port changes from release-24.5
-- Upgrade Operator SDK to v1.41.
+- Upgrade Operator SDK to v1.42.2.
 - Add Kubernetes 1.33 to the supported list.
 - Add E2E tests for Kubernetes 1.33 and remove tests for Kubernetes 1.29.
 - Allow to override the global ImagePullPolicy for every Astarte component.
