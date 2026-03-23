@@ -260,7 +260,7 @@ var _ = Describe("Astarte Generic API reconcile tests", Ordered, Serial, func() 
 			container := dep.Spec.Template.Spec.Containers[0]
 			hasDisableAuthEnv := false
 			for _, env := range container.Env {
-				if env.Name == "APPENGINE_API_DISABLE_AUTHENTICATION" && env.Value == "true" {
+				if env.Name == "APPENGINE_API_DISABLE_AUTHENTICATION" && env.Value == "true" { //nolint:goconst
 					hasDisableAuthEnv = true
 					break
 				}

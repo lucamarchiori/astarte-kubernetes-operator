@@ -796,31 +796,31 @@ func getAstarteCommonVolumeMounts(cr *apiv2alpha1.Astarte) []v1.VolumeMount {
 	return ret
 }
 
-func getAffinityForClusteredResource(appLabel string, resource apiv2alpha1.AstarteGenericClusteredResource) *v1.Affinity {
-	affinity := resource.CustomAffinity
-	if affinity == nil && pointy.BoolValue(resource.AntiAffinity, true) {
+func getAffinityForClusteredResource(appLabel string, r apiv2alpha1.AstarteGenericClusteredResource) *v1.Affinity {
+	affinity := r.CustomAffinity
+	if affinity == nil && pointy.BoolValue(r.AntiAffinity, true) {
 		affinity = getStandardAntiAffinityForAppLabel(appLabel)
 	}
 	return affinity
 }
 
-func getAstarteImageForClusteredResource(defaultImageName string, resource apiv2alpha1.AstarteGenericClusteredResource, cr *apiv2alpha1.Astarte) string {
-	if resource.Image != "" {
-		return resource.Image
+func getAstarteImageForClusteredResource(defaultImageName string, r apiv2alpha1.AstarteGenericClusteredResource, cr *apiv2alpha1.Astarte) string {
+	if r.Image != "" {
+		return r.Image
 	}
 
-	return getAstarteImageFromChannel(defaultImageName, version.GetVersionForAstarteComponent(cr.Spec.Version, resource.Version), cr)
+	return getAstarteImageFromChannel(defaultImageName, version.GetVersionForAstarteComponent(cr.Spec.Version, r.Version), cr)
 }
 
-func getDeploymentStrategyForClusteredResource(cr *apiv2alpha1.Astarte, resource apiv2alpha1.AstarteGenericClusteredResource, component apiv2alpha1.AstarteComponent) appsv1.DeploymentStrategy {
+func getDeploymentStrategyForClusteredResource(cr *apiv2alpha1.Astarte, r apiv2alpha1.AstarteGenericClusteredResource, component apiv2alpha1.AstarteComponent) appsv1.DeploymentStrategy {
 	switch {
 	case component == apiv2alpha1.DataUpdaterPlant, component == apiv2alpha1.TriggerEngine,
 		component == apiv2alpha1.FlowComponent:
 		return appsv1.DeploymentStrategy{
 			Type: appsv1.RecreateDeploymentStrategyType,
 		}
-	case resource.DeploymentStrategy != nil:
-		return *resource.DeploymentStrategy
+	case r.DeploymentStrategy != nil:
+		return *r.DeploymentStrategy
 	case cr.Spec.DeploymentStrategy != nil:
 		return *cr.Spec.DeploymentStrategy
 	default:
@@ -855,7 +855,7 @@ func createOrUpdateService(cr *apiv2alpha1.Astarte, c client.Client, serviceName
 			return e
 		}
 		// Always set everything to what we require.
-		service.ObjectMeta.Labels = labels
+		service.Labels = labels
 		service.Spec.Type = v1.ServiceTypeClusterIP
 		service.Spec.ClusterIP = noneClusterIP
 		service.Spec.Ports = []v1.ServicePort{
@@ -886,22 +886,22 @@ func computePodLabels(r apiv2alpha1.PodLabelsGetter, labels map[string]string) m
 	return podLabels
 }
 
-func getReplicaCountForResource(resource *apiv2alpha1.AstarteGenericClusteredResource, cr *apiv2alpha1.Astarte, c client.Client, log logr.Logger) *int32 {
-	if cr.Spec.Features.Autoscaling && resource.Autoscale != nil {
-		if hpaStatus, err := getHPAStatusForResource(resource.Autoscale.Horizontal, cr, c, log); err == nil {
+func getReplicaCountForResource(r *apiv2alpha1.AstarteGenericClusteredResource, cr *apiv2alpha1.Astarte, c client.Client, log logr.Logger) *int32 {
+	if cr.Spec.Features.Autoscaling && r.Autoscale != nil {
+		if hpaStatus, err := getHPAStatusForResource(r.Autoscale.Horizontal, cr, c, log); err == nil {
 			// This is a special case to avoid a race condition with HPA, which can lead to the Operator
 			// and HPA fighting over replica count, causing service disruption. This can happen when
 			// the HPA isn't able to fetch metrics for the pods, and decides to scale down to 0.
 			// This is a known issue in HPA, and this is a workaround to avoid it.
 			if hpaStatus.DesiredReplicas == 0 {
-				log.Info("HPA is reporting 0 desired replicas. This is likely a transient state. Ignoring HPA and using the spec's replica count", "HPA.Name", resource.Autoscale.Horizontal)
-				return resource.Replicas
+				log.Info("HPA is reporting 0 desired replicas. This is likely a transient state. Ignoring HPA and using the spec's replica count", "HPA.Name", r.Autoscale.Horizontal)
+				return r.Replicas
 			}
 			log.Info("Getting replica count from HPA", "value", hpaStatus.DesiredReplicas)
 			return &hpaStatus.DesiredReplicas
 		}
 	}
-	return resource.Replicas
+	return r.Replicas
 }
 
 func getHPAStatusForResource(autoscalerName string, cr *apiv2alpha1.Astarte, c client.Client, log logr.Logger) (autoscalingv2.HorizontalPodAutoscalerStatus, error) {
@@ -915,7 +915,7 @@ func getHPAStatusForResource(autoscalerName string, cr *apiv2alpha1.Astarte, c c
 
 // This stuff is useful for other components which need to interact with Cassandra
 func getCassandraNodes(cr *apiv2alpha1.Astarte) string {
-	nodes := []string{}
+	nodes := make([]string, 0, len(cr.Spec.Cassandra.Connection.Nodes))
 	for _, node := range cr.Spec.Cassandra.Connection.Nodes {
 		nodes = append(nodes, fmt.Sprintf("%s:%d", node.Host, *node.Port))
 	}

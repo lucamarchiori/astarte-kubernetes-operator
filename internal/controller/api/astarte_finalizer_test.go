@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/astarte-platform/astarte-kubernetes-operator/api/api/v2alpha1"
 	apiv2alpha1 "github.com/astarte-platform/astarte-kubernetes-operator/api/api/v2alpha1"
 	integrationutils "github.com/astarte-platform/astarte-kubernetes-operator/test/integration"
 )
@@ -112,7 +111,7 @@ var _ = Describe("Astarte Finalizer testing", Ordered, Serial, func() {
 
 			// Verify CR is eventually deleted (handleFinalization should have updated it)
 			Eventually(func() bool {
-				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, &v2alpha1.Astarte{})
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, &apiv2alpha1.Astarte{})
 				return apierrors.IsNotFound(err)
 			}, Timeout, Interval).Should(BeTrue())
 		})

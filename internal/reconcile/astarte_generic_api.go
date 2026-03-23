@@ -103,7 +103,7 @@ func EnsureAstarteGenericAPIComponent(cr *apiv2alpha1.Astarte, api apiv2alpha1.A
 		}
 
 		// Assign the Spec.
-		deployment.ObjectMeta.Labels = labels
+		deployment.Labels = labels
 		deployment.Spec = deploymentSpec
 		deployment.Spec.Replicas = getReplicaCountForResource(&api.AstarteGenericClusteredResource, cr, c, reqLogger)
 
@@ -118,8 +118,8 @@ func EnsureAstarteGenericAPIComponent(cr *apiv2alpha1.Astarte, api apiv2alpha1.A
 }
 
 func checkShouldDeploy(reqLogger logr.Logger, deploymentName string, cr *apiv2alpha1.Astarte, api apiv2alpha1.AstarteGenericAPIComponentSpec,
-	component apiv2alpha1.AstarteComponent, c client.Client) bool {
-	defaultDeployValue := true
+	component apiv2alpha1.AstarteComponent, c client.Client) (defaultDeployValue bool) {
+	defaultDeployValue = true
 	// Flow should be deployed only if explicitly requested
 	if component == apiv2alpha1.FlowComponent {
 		defaultDeployValue = false
