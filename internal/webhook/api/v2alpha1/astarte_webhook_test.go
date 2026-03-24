@@ -936,7 +936,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		It("should not return error for instance ID when no other same IDs exist", func() {
 			// In the beforeEach of the parent Describe, a CR with empty ID is created
 			newCr := cr.DeepCopy()
-			newCr.ObjectMeta.Name = "test-empty-id-no-conflict"
+			newCr.Name = "test-empty-id-no-conflict"
 			newCr.Spec.AstarteInstanceID = "a1"
 			newCr.ResourceVersion = ""
 
@@ -965,7 +965,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			// A CR with empty ID is already created in the beforeEach of the parent Describe
 			// Now try to create another with empty ID - should fail
 			newCr := cr.DeepCopy()
-			newCr.ObjectMeta.Name = "test-empty-id-conflict"
+			newCr.Name = "test-empty-id-conflict"
 			newCr.Spec.AstarteInstanceID = ""
 			newCr.ResourceVersion = ""
 
@@ -985,7 +985,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			// We create a CR with a specific instanceID, then try to create another with the same ID
 			// Create a CR with a specific instanceID
 			cr1 := cr.DeepCopy()
-			cr1.ObjectMeta.Name = "first-astarte-unique"
+			cr1.Name = "first-astarte-unique"
 			cr1.Spec.AstarteInstanceID = "myuniqueinstanceid001"
 			cr1.ResourceVersion = ""
 
@@ -1001,7 +1001,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 
 			// Try to validate a new CR with the same instanceID
 			cr2 := cr1.DeepCopy()
-			cr2.ObjectMeta.Name = "second-astarte-unique"
+			cr2.Name = "second-astarte-unique"
 			cr2.ResourceVersion = ""
 			// Keep same instanceID
 			// Create should fail due to webhook rejection
@@ -1028,7 +1028,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		It("should not return error if no other Astarte instances exists with same instanceID", func() {
 			// We create a CR with a specific instanceID, then try to create another with a different ID
 			cr1 := cr.DeepCopy()
-			cr1.ObjectMeta.Name = "first-astarte-unique"
+			cr1.Name = "first-astarte-unique"
 			cr1.Spec.AstarteInstanceID = "myuniqueinstanceid002a"
 			cr1.ResourceVersion = ""
 
@@ -1044,7 +1044,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 
 			// Create another with a different instanceID
 			cr2 := cr1.DeepCopy()
-			cr2.ObjectMeta.Name = "second-astarte-unique"
+			cr2.Name = "second-astarte-unique"
 			cr2.Spec.AstarteInstanceID = "myuniqueinstanceid002b"
 			cr2.ResourceVersion = ""
 

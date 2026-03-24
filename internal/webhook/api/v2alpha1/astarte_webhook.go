@@ -147,7 +147,7 @@ func (v *AstarteCustomValidator) ValidateCreate(_ context.Context, obj runtime.O
 		return nil, errors.New("expected a Astarte resource")
 	}
 
-	astartelog.Info("Validation for Astarte upon creation", "name", r.GetName())
+	astartelog.Info("validation for Astarte upon creation", "name", r.GetName())
 
 	allErrs := field.ErrorList{}
 
@@ -220,7 +220,7 @@ func (v *AstarteCustomValidator) ValidateDelete(_ context.Context, obj runtime.O
 		return nil, errors.New("expected a Astarte resource")
 	}
 
-	astartelog.Info("Validation for Astarte upon deletion", "name", r.GetName())
+	astartelog.Info("validation for Astarte upon deletion", "name", r.GetName())
 
 	return nil, nil
 }
@@ -266,7 +266,7 @@ func validateUpdateAstarteInstanceID(r *apiv2alpha1.Astarte, oldAstarte *apiv2al
 func validateCreateAstarteInstanceID(r *apiv2alpha1.Astarte) *field.Error {
 	astarteList := &apiv2alpha1.AstarteList{}
 	if clientErr := c.List(context.Background(), astarteList); clientErr != nil {
-		err := errors.New("cannot list astarte instances in the cluster. Please retry.")
+		err := errors.New("cannot list astarte instances in the cluster. Please retry")
 		astartelog.Info(clientErr.Error(), "details", err.Error())
 		return field.InternalError(field.NewPath(""), err)
 	}
@@ -377,7 +377,7 @@ func validatePriorityClassesValues(r *apiv2alpha1.Astarte) *field.Error {
 	lowPriorityValue := *r.Spec.Features.AstartePodPriorities.AstarteLowPriority
 
 	if midPriorityValue >= highPriorityValue || lowPriorityValue >= midPriorityValue {
-		err := errors.New("Astarte PriorityClass values are incoherent")
+		err := errors.New("the Astarte PriorityClass values are incoherent")
 		astartelog.Info(err.Error())
 		fldPath := field.NewPath("spec").Child("features").Child("astarte{Low|Medium|High}Priority")
 
@@ -455,7 +455,7 @@ func validateCreateAstarteSystemKeyspace(r *apiv2alpha1.Astarte) field.ErrorList
 
 func validateUpdateAstarteSystemKeyspace(r *apiv2alpha1.Astarte, oldAstarte *apiv2alpha1.Astarte) *field.Error {
 	if r.Spec.Cassandra.AstarteSystemKeyspace != oldAstarte.Spec.Cassandra.AstarteSystemKeyspace {
-		err := errors.New("Once Astarte is created, the astarteSystemKeyspace cannot be modified")
+		err := errors.New("ance Astarte is created, the astarteSystemKeyspace cannot be modified")
 		fldPath := field.NewPath("spec").Child("cassandra").Child("astarteSystemKeyspace")
 		return field.Invalid(fldPath, r.Spec.Cassandra.AstarteSystemKeyspace, err.Error())
 	}
@@ -470,7 +470,7 @@ func validateCFSSLDefinition(r *apiv2alpha1.Astarte) *field.Error {
 
 	// If we are here, CFSSL is not being deployed. Ensure URL is set.
 	if r.Spec.CFSSL.URL == "" {
-		err := errors.New("When not deploying CFSSL, the 'url' must be specified")
+		err := errors.New("when not deploying CFSSL, the 'url' must be specified")
 		fldPath := field.NewPath("spec").Child("cfssl").Child("url")
 		astartelog.Info(err.Error())
 		return field.Invalid(fldPath, r.Spec.CFSSL.URL, err.Error())
@@ -479,7 +479,7 @@ func validateCFSSLDefinition(r *apiv2alpha1.Astarte) *field.Error {
 	// If URL is set, ensure it is compliant with RFC 3986
 	_, err := url.Parse(r.Spec.CFSSL.URL)
 	if err != nil {
-		err := errors.New("The provided URL is not valid")
+		err := errors.New("the provided URL is not valid")
 		fldPath := field.NewPath("spec").Child("cfssl").Child("url")
 		astartelog.Info(err.Error())
 		return field.Invalid(fldPath, r.Spec.CFSSL.URL, err.Error())

@@ -103,7 +103,7 @@ func EnsureBlock(cr *flowv2alpha1.Flow, block flowv2alpha1.ContainerBlockSpec, a
 		}
 
 		// Assign the Spec.
-		deployment.ObjectMeta.Labels = blockLabels
+		deployment.Labels = blockLabels
 		deployment.Spec = appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: blockLabels},
 			// Use Recreate, as we don't want to be in the situation where multiple replicas are alive.
@@ -209,16 +209,15 @@ func ensureWorkerContainer(block flowv2alpha1.ContainerBlockSpec, worker flowv2a
 
 func generateVolumesFor(cr *flowv2alpha1.Flow, block flowv2alpha1.ContainerBlockSpec, astarte *apiv2alpha1.Astarte) []v1.Volume {
 	// Start with the block-config volume
-	ret := []v1.Volume{
-		{
-			Name: "block-config",
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
-					SecretName: GenerateBlockName(cr, block, astarte),
-				},
+	ret := make([]v1.Volume, 0, 1+len(block.Workers))
+	ret = append(ret, v1.Volume{
+		Name: "block-config",
+		VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{
+				SecretName: GenerateBlockName(cr, block, astarte),
 			},
 		},
-	}
+	})
 
 	// Add every worker configuration.
 	for _, w := range block.Workers {

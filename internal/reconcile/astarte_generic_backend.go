@@ -105,7 +105,7 @@ func EnsureAstarteGenericBackend(cr *apiv2alpha1.Astarte, backend apiv2alpha1.As
 		}
 
 		// Assign the Spec.
-		deployment.ObjectMeta.Labels = labels
+		deployment.Labels = labels
 		deployment.Spec = deploymentSpec
 		deployment.Spec.Replicas = getReplicaCountForResource(&backend, cr, c, reqLogger)
 

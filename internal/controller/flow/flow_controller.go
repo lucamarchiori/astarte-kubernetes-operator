@@ -56,7 +56,7 @@ func (r *FlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	// Fetch the Flow instance
 	instance := &flowv2alpha1.Flow{}
-	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
@@ -85,7 +85,7 @@ func (r *FlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// Any leftovers we should delete?
 	for _, b := range existingBlocks {
 		block := b
-		if e := r.Client.Delete(ctx, &block); e != nil {
+		if e := r.Delete(ctx, &block); e != nil {
 			return reconcile.Result{}, e
 		}
 	}
@@ -93,7 +93,7 @@ func (r *FlowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// Update the Status and finish the reconciliation
 	if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		instance = &flowv2alpha1.Flow{}
-		if err = r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+		if err = r.Get(ctx, req.NamespacedName, instance); err != nil {
 			return err
 		}
 
@@ -145,11 +145,11 @@ func (r *FlowReconciler) computeFlowStatusResource(reqLogger logr.Logger, instan
 func (r *FlowReconciler) getResourcesForReconciliationFor(instance *flowv2alpha1.Flow) (*apiv2alpha1.Astarte, map[string]appsv1.Deployment, reconcile.Result, error) {
 	// Get the Astarte instance for the Flow
 	astarte := &apiv2alpha1.Astarte{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.Astarte.Name, Namespace: instance.Namespace}, astarte); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.Astarte.Name, Namespace: instance.Namespace}, astarte); err != nil {
 		if errors.IsNotFound(err) {
 			d, _ := time.ParseDuration("30s")
 			return nil, nil, reconcile.Result{Requeue: true, RequeueAfter: d},
-				fmt.Errorf("The Astarte Instance %s associated to this Flow cannot be found", instance.Spec.Astarte)
+				fmt.Errorf("the Astarte Instance %s associated to this Flow cannot be found", instance.Spec.Astarte)
 		}
 		// Error reading the object - requeue the request.
 		return nil, nil, reconcile.Result{}, err
@@ -185,7 +185,7 @@ func (r *FlowReconciler) getAllBlocksDeploymentsForFlow(instance *flowv2alpha1.F
 		"flow-name":      instance.Name,
 	}
 	blockList := appsv1.DeploymentList{}
-	err := r.Client.List(context.TODO(), &blockList, client.InNamespace(instance.Namespace), client.MatchingLabels(blockLabels))
+	err := r.List(context.TODO(), &blockList, client.InNamespace(instance.Namespace), client.MatchingLabels(blockLabels))
 
 	return blockList, err
 }
@@ -209,7 +209,7 @@ func (r *FlowReconciler) computeBlocksState(reqLogger logr.Logger, blockList app
 			readyBlocks++
 		} else {
 			podList := &v1.PodList{}
-			if err := r.Client.List(context.TODO(), podList, client.InNamespace(instance.Namespace),
+			if err := r.List(context.TODO(), podList, client.InNamespace(instance.Namespace),
 				client.MatchingLabels{"flow-block": b.Labels["flow-block"]}); err != nil {
 				reqLogger.Error(err, "Could not fetch pods for Block", "block", b.Name)
 				continue

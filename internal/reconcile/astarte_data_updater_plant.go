@@ -36,7 +36,7 @@ import (
 
 // EnsureAstarteDataUpdaterPlant manages multiple deployments for Astarte Data Updater Plant based on scalability requirements
 func EnsureAstarteDataUpdaterPlant(cr *apiv2alpha1.Astarte, dup apiv2alpha1.AstarteDataUpdaterPlantSpec, c client.Client, scheme *runtime.Scheme) error {
-	replicas := pointy.Int32Value(dup.AstarteGenericClusteredResource.Replicas, 1)
+	replicas := pointy.Int32Value(dup.Replicas, 1)
 	component := apiv2alpha1.DataUpdaterPlant
 
 	// Let's list the existing deployments labeled DUP
@@ -46,14 +46,14 @@ func EnsureAstarteDataUpdaterPlant(cr *apiv2alpha1.Astarte, dup apiv2alpha1.Asta
 		return err
 	}
 
-	if len(currentDUPDeployments.Items) > int(replicas) || !pointy.BoolValue(dup.AstarteGenericClusteredResource.Deploy, true) {
+	if len(currentDUPDeployments.Items) > int(replicas) || !pointy.BoolValue(dup.Deploy, true) {
 		// In this case, we should schedule for immediate deletion all of the deployments and recreate them.
 		if err := c.DeleteAllOf(context.Background(), &appsv1.Deployment{}, client.InNamespace(cr.Namespace),
 			client.MatchingLabels{"astarte-component": component.DashedString()}); err != nil {
 			return err
 		}
 		// If we shouldn't deploy, just return now then.
-		if !pointy.BoolValue(dup.AstarteGenericClusteredResource.Deploy, true) {
+		if !pointy.BoolValue(dup.Deploy, true) {
 			return nil
 		}
 	}
@@ -130,7 +130,7 @@ func createIndexedDataUpdaterPlantDeployment(replicaIndex, replicas int, cr *api
 		}
 
 		// Assign the Spec.
-		deployment.ObjectMeta.Labels = labels
+		deployment.Labels = labels
 		deployment.Spec = deploymentSpec
 		// Always force to 1
 		deployment.Spec.Replicas = pointy.Int32(1)

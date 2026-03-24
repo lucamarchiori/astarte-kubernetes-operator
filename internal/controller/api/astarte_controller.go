@@ -75,7 +75,7 @@ func (r *AstarteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Fetch the Astarte instance
 	instance := &apiv2alpha1.Astarte{}
-	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
@@ -98,7 +98,7 @@ func (r *AstarteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		// If that is so, compute the status and quit.
 		if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			instance = &apiv2alpha1.Astarte{}
-			if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+			if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 				return err
 			}
 
@@ -168,7 +168,7 @@ func (r *AstarteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// Update the status
 	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		instance := &apiv2alpha1.Astarte{}
-		if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+		if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 			return err
 		}
 

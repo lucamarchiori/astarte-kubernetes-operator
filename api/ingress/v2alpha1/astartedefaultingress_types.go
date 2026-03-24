@@ -19,7 +19,6 @@ limitations under the License.
 package v2alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -83,7 +82,7 @@ type AstarteDefaultIngressSpec struct {
 type AstarteDefaultIngressStatus struct {
 	metav1.TypeMeta `json:",inline"`
 	APIStatus       networkingv1.IngressStatus `json:"api,omitempty"`
-	BrokerStatus    corev1.ServiceStatus       `json:"broker,omitempty"`
+	BrokerStatus    v1.ServiceStatus           `json:"broker,omitempty"`
 }
 
 // +kubebuilder:object:root=true

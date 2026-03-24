@@ -64,7 +64,7 @@ func (r *AstarteDefaultIngressReconciler) Reconcile(ctx context.Context, req ctr
 
 	// Fetch the AstarteDefaultIngress instance
 	instance := &ingressv2alpha1.AstarteDefaultIngress{}
-	err := r.Client.Get(context.TODO(), req.NamespacedName, instance)
+	err := r.Get(context.TODO(), req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -78,7 +78,7 @@ func (r *AstarteDefaultIngressReconciler) Reconcile(ctx context.Context, req ctr
 
 	// Get the Astarte instance
 	astarte := &apiv2alpha1.Astarte{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.Astarte, Namespace: instance.Namespace}, astarte); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.Astarte, Namespace: instance.Namespace}, astarte); err != nil {
 		if errors.IsNotFound(err) {
 			d, _ := time.ParseDuration("30s")
 			return ctrl.Result{Requeue: true, RequeueAfter: d},
@@ -104,7 +104,7 @@ func (r *AstarteDefaultIngressReconciler) Reconcile(ctx context.Context, req ctr
 
 	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		instance := &ingressv2alpha1.AstarteDefaultIngress{}
-		if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+		if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 			return err
 		}
 

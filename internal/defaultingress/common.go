@@ -45,7 +45,7 @@ func buildContentSecurityPolicy(cr *ingressv2alpha1.AstarteDefaultIngress, paren
 	}
 
 	backend := parent.Spec.API.Host
-	var parts []string
+	parts := make([]string, 0, 7)
 
 	// The best practice for CSP would be to deny everything and allow only
 	// the content we need from the sources we trust.

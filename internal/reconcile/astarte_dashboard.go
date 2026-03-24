@@ -79,7 +79,7 @@ func EnsureAstarteDashboard(cr *apiv2alpha1.Astarte, dashboard apiv2alpha1.Astar
 			return err
 		}
 		// Always set everything to what we require.
-		service.ObjectMeta.Labels = labels
+		service.Labels = labels
 		service.Spec.Type = v1.ServiceTypeClusterIP
 		service.Spec.ClusterIP = noneClusterIP
 		service.Spec.Ports = []v1.ServicePort{
@@ -119,7 +119,7 @@ func EnsureAstarteDashboard(cr *apiv2alpha1.Astarte, dashboard apiv2alpha1.Astar
 		}
 
 		// Assign the Spec.
-		deployment.ObjectMeta.Labels = labels
+		deployment.Labels = labels
 		deployment.Spec = deploymentSpec
 		deployment.Spec.Replicas = getReplicaCountForResource(&dashboard.AstarteGenericClusteredResource, cr, c, reqLogger)
 
