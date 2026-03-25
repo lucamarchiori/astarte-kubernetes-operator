@@ -16,69 +16,42 @@ To create your Astarte resource, just create your Astarte Custom Resource, which
 like this:
 
 ```yaml
-apiVersion: api.astarte-platform.org/v1alpha1
+apiVersion: api.astarte-platform.org/v2alpha1
 kind: Astarte
 metadata:
   name: astarte
   namespace: astarte
 spec:
-  # This is the most minimal set of reasonable configuration to spin up an Astarte
-  # instance with reasonable defaults and enough control over the deployment.
-  version: 1.1.1
+  version: 1.3.0
   api:
-    host: "api.astarte.yourdomain.com" # MANDATORY
-  rabbitmq:
-    resources:
-      requests:
-        cpu: 300m
-        memory: 512M
-      limits:
-        cpu: 1
-        memory: 1000M
-  # this configuration deploys cassandra in cluster. This is not advised for production environments
+    host: api.astarte.yourdomain.com
   cassandra:
-    maxHeapSize: 1024M
-    heapNewSize: 256M
-    storage:
-      size: 30Gi
-    resources:
-      requests:
-        cpu: 1
-        memory: 1024M
-      limits:
-        cpu: 2
-        memory: 2048M
+    connection:
+      nodes:
+        - host: "cassandra.example.com"
+          port: 9042
+      credentialsSecret:
+        name: cassandra-connection-secret
+        usernameKey: username
+        passwordKey: password
   vernemq:
-    host: "broker.astarte.yourdomain.com"
+    deploy: true
+    replicas: 1
+    host: broker.astarte.yourdomain.com
+    port: 1883
     sslListener: true
-    sslListenerCertSecretName: <your-tls-secret>
-    resources:
-      requests:
-        cpu: 200m
-        memory: 1024M
-      limits:
-        cpu: 1000m
-        memory: 2048M
-  cfssl:
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128M
-      limits:
-        cpu: 200m
-        memory: 256M
-    storage:
-      size: 2Gi
-  components:
-    # Global resource allocation. Automatically allocates resources to components weighted in a
-    # reasonable way.
-    resources:
-      requests:
-        cpu: 1200m
-        memory: 3072M
-      limits:
-        cpu: 3000m
-        memory: 6144M
+    sslListenerCertSecretName: astarte-tls-cert
+  rabbitmq:
+    connection:
+      host: "rabbitmq.example.com"
+      port: 5672
+      credentialsSecret:
+        name: rabbitmq-connection-secret
+        usernameKey: username
+        passwordKey: password
+    managementConnection:
+      host: "rabbitmq.example.com"
+      port: 5672
 ```
 
 Starting from Astarte v1.0.1, traffic coming to the broker is TLS terminated ad VerneMQ level. The
