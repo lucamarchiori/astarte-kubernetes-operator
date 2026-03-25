@@ -60,7 +60,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   the replica count from the Astarte custom resource instead.
 - Fix index out of range bug in `astarte_webhook.go`.
 
-## [24.5.2] - Unreleased
+
+## [24.5.2] - 2026-03-25
+
+## [24.5.2-rc.0] - 2025-09-24
 ### Added
 - AppEngine, DUP, VerneMQ have `get` and `list` permissions on
   endpoints, pods and services.
