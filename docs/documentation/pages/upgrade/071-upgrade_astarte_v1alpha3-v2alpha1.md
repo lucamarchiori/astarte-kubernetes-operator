@@ -42,12 +42,14 @@ This results in the following key changes:
 
 ### Keyspace Fields
 
-The entire `astarteSystemKeyspace` object has been moved and enhanced.
+The entire `astarteSystemKeyspace` object has been moved and enhanced. 
+`spec.cassandra.astarteSystemKeyspace` is now a required field, along with new options for replication strategy and data center replication factors depending on the chosen strategy.
+No default values are provided, once the fields are set, they cannot be later updated without deleting the Astarte instance.
 
 | v1alpha3 Path | v2alpha1 Path | Action Required |
 | --- | --- | --- |
 | `spec.astarteSystemKeyspace` | `spec.cassandra.astarteSystemKeyspace` | **Moved & Enhanced**. Move the object under `spec.cassandra`. |
-| `(none)` | `astarteSystemKeyspace.replicationStrategy` | **New field**. You can now specify the replication strategy (`"SimpleStrategy"` or `"NetworkTopologyStrategy"`). Defaults to `"SimpleStrategy"`. |
+| `(none)` | `astarteSystemKeyspace.replicationStrategy` | **New field**. You can now specify the replication strategy (`"SimpleStrategy"` or `"NetworkTopologyStrategy"`). |
 | `(none)` | `astarteSystemKeyspace.dataCenterReplication` | **New field**. Use this to specify per-datacenter replication factors when using `"NetworkTopologyStrategy"`. For example: `"dc1:3,dc2:3"`. |
 
 ## RabbitMQ

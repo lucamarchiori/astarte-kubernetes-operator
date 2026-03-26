@@ -29,6 +29,7 @@ import (
 	apiv2alpha1 "github.com/astarte-platform/astarte-kubernetes-operator/api/api/v2alpha1"
 	"go.openly.dev/pointy"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -390,20 +391,38 @@ func validateCreateAstarteSystemKeyspace(r *apiv2alpha1.Astarte) field.ErrorList
 	allErrs := field.ErrorList{}
 	ask := r.Spec.Cassandra.AstarteSystemKeyspace
 
+	// Replication strategy is required and validated with
+	// kubebuilder annotations. At this point is already set.
+
 	if ask.ReplicationStrategy == "SimpleStrategy" {
+		// replication factor must be set
+		if ask.ReplicationFactor == nil {
+			err := errors.New("required replication factor is not set")
+			astartelog.Info(err.Error())
+			fldPath := field.NewPath("spec").Child("cassandra").Child("astarteSystemKeyspace").Child("replicationFactor")
+			allErrs = append(allErrs, field.Invalid(fldPath, ask.ReplicationFactor, err.Error()))
+		}
+
 		// replication factor must be odd
-		if ask.ReplicationFactor%2 == 0 {
+		if ask.ReplicationFactor != nil && *ask.ReplicationFactor%2 == 0 {
 			err := errors.New("invalid replication factor: it must be odd")
 			astartelog.Info(err.Error())
 			fldPath := field.NewPath("spec").Child("cassandra").Child("astarteSystemKeyspace").Child("replicationFactor")
-
 			allErrs = append(allErrs, field.Invalid(fldPath, ask.ReplicationFactor, err.Error()))
 		}
+
 		return allErrs
 	}
 
 	// If we reached this point, NetworkTopologyStrategy has been chosen
 	keyValuePairs := make(map[string]int)
+	if r.Spec.Cassandra.AstarteSystemKeyspace.DataCenterReplication == "" {
+		err := errors.New("field DataCenterReplication must be set when ReplicationStrategy is NetworkTopologyStrategy")
+		astartelog.Info(err.Error())
+		fldPath := field.NewPath("spec").Child("cassandra").Child("astarteSystemKeyspace").Child("dataCenterReplication")
+		allErrs = append(allErrs, field.Invalid(fldPath, ask.DataCenterReplication, err.Error()))
+		return allErrs
+	}
 
 	items := strings.Split(r.Spec.Cassandra.AstarteSystemKeyspace.DataCenterReplication, ",")
 	for _, dr := range items {
@@ -454,8 +473,8 @@ func validateCreateAstarteSystemKeyspace(r *apiv2alpha1.Astarte) field.ErrorList
 }
 
 func validateUpdateAstarteSystemKeyspace(r *apiv2alpha1.Astarte, oldAstarte *apiv2alpha1.Astarte) *field.Error {
-	if r.Spec.Cassandra.AstarteSystemKeyspace != oldAstarte.Spec.Cassandra.AstarteSystemKeyspace {
-		err := errors.New("ance Astarte is created, the astarteSystemKeyspace cannot be modified")
+	if !equality.Semantic.DeepEqual(r.Spec.Cassandra.AstarteSystemKeyspace, oldAstarte.Spec.Cassandra.AstarteSystemKeyspace) {
+		err := errors.New("once Astarte is created, the astarteSystemKeyspace cannot be modified")
 		fldPath := field.NewPath("spec").Child("cassandra").Child("astarteSystemKeyspace")
 		return field.Invalid(fldPath, r.Spec.Cassandra.AstarteSystemKeyspace, err.Error())
 	}
