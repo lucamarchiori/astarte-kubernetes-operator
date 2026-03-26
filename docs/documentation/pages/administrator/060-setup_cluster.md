@@ -26,6 +26,9 @@ spec:
   api:
     host: api.astarte.yourdomain.com
   cassandra:
+    astarteSystemKeyspace:
+      replicationFactor: 1
+      replicationStrategy: SimpleStrategy
     connection:
       nodes:
         - host: "cassandra.example.com"

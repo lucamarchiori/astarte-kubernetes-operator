@@ -418,8 +418,8 @@ type AstarteCassandraConnectionSpec struct {
 type AstarteCassandraSpec struct {
 	// +kubebuilder:validation:Required
 	Connection *AstarteCassandraConnectionSpec `json:"connection,omitempty"`
-	// +kubebuilder:validation:Optional
-	AstarteSystemKeyspace AstarteSystemKeyspaceSpec `json:"astarteSystemKeyspace,omitempty"`
+	// +kubebuilder:validation:Required
+	AstarteSystemKeyspace AstarteSystemKeyspaceSpec `json:"astarteSystemKeyspace"`
 }
 
 type AstarteVerneMQSpec struct {
@@ -678,25 +678,28 @@ func (r AstarteCFSSLSpec) GetPodLabels() map[string]string {
 //   - ReplicationStrategy chooses the replication strategy for the keyspace.
 //   - ReplicationFactor (for SimpleStrategy or for default replication factor with NetworkTopologyStrategy).
 //   - DataCenterReplication (for flexible NetworkTopologyStrategy configurations).
+//
+// These fields must be set at the first apply of the CR and cannot be changed later on,
+// for this reason no default is provided: the user shall make a conscious choice.
 type AstarteSystemKeyspaceSpec struct {
 	// ReplicationStrategy specifies the Cassandra/ScyllaDB replication strategy for the keyspace.
 	// Must be either "SimpleStrategy" or "NetworkTopologyStrategy" (for production deployments and/or
 	// multi-datacenter deployments).
-	// Defaults to "SimpleStrategy".
-	// +kubebuilder:default:=SimpleStrategy
+	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Enum=SimpleStrategy;NetworkTopologyStrategy
-	ReplicationStrategy string `json:"replicationStrategy,omitempty"`
+	ReplicationStrategy string `json:"replicationStrategy"`
 	// ReplicationFactor sets the total number of replicas for the keyspace when using SimpleStrategy.
 	// This field is ignored if ReplicationStrategy is set to NetworkTopologyStrategy.
-	// Must be at least 1. Must be odd. Defaults to 1.
+	// Must be at least 1. Must be odd.
+	// Must be set if replicationStrategy is SimpleStrategy (checked with Admission Webhooks)
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:default:=1
-	ReplicationFactor int `json:"replicationFactor,omitempty"`
+	ReplicationFactor *int `json:"replicationFactor,omitempty"`
 	// DataCenterReplication specifies custom replication factors per datacenter when using NetworkTopologyStrategy.
 	// If set, this string must be a comma-separated list of <DataCenter>:<ReplicationFactor> entries
 	// (e.g., "dc1:3,dc2:5"). <ReplicationFactor> must be odd.
 	// This field is ignored if ReplicationStrategy is set to SimpleStrategy.
+	// Must be set if replicationStrategy is NetworkTopologyStrategy (checked with Admission Webhooks)
 	// +kubebuilder:validation:Optional
 	DataCenterReplication string `json:"dataCenterReplication,omitempty"`
 }

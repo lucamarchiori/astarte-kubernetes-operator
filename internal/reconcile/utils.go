@@ -936,7 +936,7 @@ func appendAstarteKeyspaceEnvVars(cr *apiv2alpha1.Astarte) []v1.EnvVar {
 	if ask.ReplicationStrategy == "SimpleStrategy" {
 		ret = append(ret, v1.EnvVar{
 			Name:  "HOUSEKEEPING_ASTARTE_KEYSPACE_REPLICATION_FACTOR",
-			Value: strconv.Itoa(ask.ReplicationFactor),
+			Value: strconv.Itoa(pointy.IntValue(ask.ReplicationFactor, 1)),
 		})
 		return ret
 	}
