@@ -31,6 +31,9 @@ spec:
   # Cassandra/ScyllaDB can be deployed either in cluster or out of cluster.
   # What follows is just an in-cluster example.
   cassandra:
+    astarteSystemKeyspace:
+      replicationFactor: 1
+      replicationStrategy: SimpleStrategy
     connection:
       nodes:
       - host: "scylla-local-kind-1-local-kind-1a-0.scylla.svc.cluster.local"

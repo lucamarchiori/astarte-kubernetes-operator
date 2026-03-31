@@ -557,7 +557,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		It("should return an error when trying to change the keyspace", func() {
 			oldAstarte.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{
 				ReplicationStrategy:   "SimpleStrategy",
-				ReplicationFactor:     1,
+				ReplicationFactor:     pointy.Int(1),
 				DataCenterReplication: "dc1:3,dc2:2",
 			}
 			cr.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{
@@ -573,23 +573,15 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		It("should NOT return an error when the keyspace is unchanged", func() {
 			oldAstarte.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{
 				ReplicationStrategy:   "SimpleStrategy",
-				ReplicationFactor:     1,
+				ReplicationFactor:     pointy.Int(1),
 				DataCenterReplication: "dc1:3,dc2:2",
 			}
 
 			cr.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{
 				ReplicationStrategy:   "SimpleStrategy",
-				ReplicationFactor:     1,
+				ReplicationFactor:     pointy.Int(1),
 				DataCenterReplication: "dc1:3,dc2:2",
 			}
-
-			err := validateUpdateAstarteSystemKeyspace(cr, oldAstarte)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should NOT return an error when the keyspace is empty in both old and new spec", func() {
-			oldAstarte.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{}
-			cr.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{}
 
 			err := validateUpdateAstarteSystemKeyspace(cr, oldAstarte)
 			Expect(err).ToNot(HaveOccurred())
@@ -681,9 +673,18 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			}
 		})
 
+		It("should return error with SimpleStrategy and no replication factor", func() {
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationStrategy = "SimpleStrategy"
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = nil
+
+			err := validateCreateAstarteSystemKeyspace(cr)
+			Expect(err).ToNot(BeNil())
+			Expect(err[0].Field).To(Equal("spec.cassandra.astarteSystemKeyspace.replicationFactor"))
+		})
+
 		It("should not return error with SimpleStrategy and valid odd replication factor", func() {
 			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationStrategy = "SimpleStrategy"
-			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = 3
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = pointy.Int(3)
 
 			err := validateCreateAstarteSystemKeyspace(cr)
 			Expect(err).ToNot(BeNil())
@@ -692,7 +693,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 
 		It("should return an error with SimpleStrategy and zero replication factor", func() {
 			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationStrategy = "SimpleStrategy"
-			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = 0
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = pointy.Int(0)
 
 			err := validateCreateAstarteSystemKeyspace(cr)
 			Expect(err).ToNot(BeNil())
@@ -720,7 +721,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 
 		It("should return an error with SimpleStrategy and invalid even replication factor", func() {
 			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationStrategy = "SimpleStrategy"
-			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = 2
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = pointy.Int(2)
 
 			err := validateCreateAstarteSystemKeyspace(cr)
 			Expect(err).ToNot(BeNil())
@@ -803,7 +804,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			cr.Spec.Cassandra = apiv2alpha1.AstarteCassandraSpec{
 				AstarteSystemKeyspace: apiv2alpha1.AstarteSystemKeyspaceSpec{
 					ReplicationStrategy: "SimpleStrategy",
-					ReplicationFactor:   3,
+					ReplicationFactor:   pointy.Int(3),
 				},
 			}
 		})
@@ -828,7 +829,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 
 		It("should return invalid when keyspace has invalid replication factor", func() {
 			cr.Spec.AstarteInstanceID = "coverageid3"
-			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = 2 // Even number - invalid
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = pointy.Int(2) // Even number - invalid
 			validator := &AstarteCustomValidator{}
 			w, err := validator.ValidateCreate(context.Background(), cr)
 			Expect(w).To(BeNil())
@@ -859,7 +860,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			oldObj.Spec.Cassandra = apiv2alpha1.AstarteCassandraSpec{
 				AstarteSystemKeyspace: apiv2alpha1.AstarteSystemKeyspaceSpec{
 					ReplicationStrategy: "SimpleStrategy",
-					ReplicationFactor:   3,
+					ReplicationFactor:   pointy.Int(3),
 				},
 			}
 			cr.Spec.Cassandra = apiv2alpha1.AstarteCassandraSpec{

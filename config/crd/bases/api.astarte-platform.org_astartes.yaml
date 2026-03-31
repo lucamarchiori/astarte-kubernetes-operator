@@ -46,15 +46,15 @@ spec:
                       dataCenterReplication:
                         type: string
                       replicationFactor:
-                        default: 1
                         minimum: 1
                         type: integer
                       replicationStrategy:
-                        default: SimpleStrategy
                         enum:
                         - SimpleStrategy
                         - NetworkTopologyStrategy
                         type: string
+                    required:
+                    - replicationStrategy
                     type: object
                   connection:
                     properties:
@@ -124,6 +124,7 @@ spec:
                         type: object
                     type: object
                 required:
+                - astarteSystemKeyspace
                 - connection
                 type: object
               cfssl:
