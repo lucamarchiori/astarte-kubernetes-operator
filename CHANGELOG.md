@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [26.5.0] - Unreleased
+## [26.5.0-alpha.0] - 2026-04-10
 ### Added
 - Add v2alpha1 API version for the api.astarte-platform.org group.
 - Add v2alpha1 API version for the flow.astarte-platform.org group.
