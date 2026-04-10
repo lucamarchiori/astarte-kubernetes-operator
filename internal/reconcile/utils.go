@@ -378,6 +378,37 @@ func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvV
 		},
 	)
 
+	// Rendezvous SSL configuration
+	if cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.Enable {
+		ret = append(ret, v1.EnvVar{
+			Name:  "PAIRING_FDO_RENDEZVOUS_SSL_ENABLED",
+			Value: "true",
+		})
+
+		// CA configuration
+		if cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+			// getAstarteCommonVolumes will mount the volume for us, if we're here. So trust the rest of our code.
+			ret = append(ret, v1.EnvVar{
+				Name:  "PAIRING_FDO_RENDEZVOUS_SSL_CA_FILE",
+				Value: "/rendezvous-ssl/ca.crt",
+			})
+		}
+
+		// SNI configuration
+		switch {
+		case cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomSNI != "":
+			ret = append(ret, v1.EnvVar{
+				Name:  "PAIRING_FDO_RENDEZVOUS_SSL_CUSTOM_SNI",
+				Value: cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomSNI,
+			})
+		case !pointy.BoolValue(cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.SNI, true):
+			ret = append(ret, v1.EnvVar{
+				Name:  "PAIRING_FDO_RENDEZVOUS_SSL_DISABLE_SNI",
+				Value: "true",
+			})
+		}
+	}
+
 	return ret
 }
 
@@ -763,6 +794,18 @@ func getAstarteCommonVolumes(cr *apiv2alpha1.Astarte) []v1.Volume {
 		})
 	}
 
+	// if FDO configuration struct is not initialized do not attempt to mount the secret
+	if cr.Spec.FDO != nil && cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+		// Mount the secret!
+		ret = append(ret, v1.Volume{
+			Name: "rendezvous-ssl-ca",
+			VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+				SecretName: cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name,
+				Items:      []v1.KeyToPath{{Key: "ca.crt", Path: "ca.crt"}},
+			}},
+		})
+	}
+
 	return ret
 }
 
@@ -789,6 +832,15 @@ func getAstarteCommonVolumeMounts(cr *apiv2alpha1.Astarte) []v1.VolumeMount {
 		ret = append(ret, v1.VolumeMount{
 			Name:      "cassandra-ssl-ca",
 			MountPath: "/cassandra-ssl",
+			ReadOnly:  true,
+		})
+	}
+
+	if cr.Spec.FDO != nil && cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+		// Mount the secret!
+		ret = append(ret, v1.VolumeMount{
+			Name:      "rendezvous-ssl-ca",
+			MountPath: "/rendezvous-ssl",
 			ReadOnly:  true,
 		})
 	}
