@@ -1,4 +1,4 @@
-# Astarta CR Migration examples (v1alpha3 to v2alpha1)
+# Astarte CR Migration examples (v1alpha3 to v2alpha1)
 
 ## Scylla
 The following is a minimal Cassandra configuration to connect to an external instance.

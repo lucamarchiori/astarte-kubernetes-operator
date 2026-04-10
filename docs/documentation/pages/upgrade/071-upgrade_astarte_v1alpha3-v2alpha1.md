@@ -84,7 +84,7 @@ The connection spec has been updated to use a more generic and structured format
 | `connection.password` | **Removed** | **Removed**. Credentials must now be provided via a secret. |
 | `connection.secret` | `connection.credentialsSecret` | **Renamed**. The `secret` field is now called `credentialsSecret`. |
 
-### Managment Connection Fields (`spec.rabbitmq.managementConnection`)
+### Management Connection Fields (`spec.rabbitmq.managementConnection`)
 
 The management connection spec has been introduced in `v2alpha1` to allow separate connection details for the RabbitMQ management API.
 
