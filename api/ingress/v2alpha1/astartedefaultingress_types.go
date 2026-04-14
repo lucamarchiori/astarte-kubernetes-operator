@@ -54,10 +54,12 @@ type AstarteDefaultIngressSpec struct {
 	metav1.TypeMeta `json:",inline"`
 	// The name of the Astarte instance served by the AstarteDefaultIngress.
 	Astarte string `json:"astarte"`
-	// In clusters with more than one instance of the Ingress-NGINX controller, all
+	// In clusters with more than one ingress controllers, all
 	// instances of the controllers must be aware of which Ingress object they must serve.
 	// The ingressClass field of a ingress object is the way to let the controller know about that.
-	// Default: "nginx".
+	// If empty, admission webhooks set default IngressClass based on Ingress Controller selection
+	// defined in the annotation `ingress.astarte-platform.org/ingress-controller-selector`.
+	// If the annotation is not set, HAProxy Ingress Controller is assumed by default.
 	// +optional
 	IngressClass string `json:"ingressClass"`
 	// Define the desired state of the AstarteDefaultIngressAPISpec resource.
