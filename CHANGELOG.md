@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [26.5.0-alpha.1] - Unreleased
+
+### Changed
+- Moved FDO configuration from the `spec.features` field to a dedicated `spec.fdo` field in the Astarte CR.
+- FDO configuration now support a more granular configuration of the Rendezvous Server connection parameters under the `spec.fdo.rendezvousServer.connection` field.
+
 ## [26.5.0-alpha.0] - 2026-04-10
 ### Added
 - Add v2alpha1 API version for the api.astarte-platform.org group.

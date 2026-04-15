@@ -342,7 +342,7 @@ func computePersistentVolumeClaim(defaultName string, defaultSize *resource.Quan
 
 // appendAstarteFDOEnvVars returns the environment variables needed to enable FDO support in Pairing
 func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
-	if cr.Spec.Features.FDO == nil || !cr.Spec.Features.FDO.Enable {
+	if cr.Spec.FDO == nil || !cr.Spec.FDO.Enable {
 		return append(ret, v1.EnvVar{Name: "PAIRING_ENABLE_FDO", Value: "false"})
 	}
 
@@ -353,7 +353,7 @@ func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvV
 		port = 80
 	}
 
-	rsPort := pointy.Int32Value(cr.Spec.Features.FDO.RendezvousServer.Port, 8041)
+	rsPort := pointy.Int32Value(cr.Spec.FDO.RendezvousServer.Connection.Port, 8041)
 
 	ret = append(ret,
 		v1.EnvVar{
@@ -362,7 +362,7 @@ func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvV
 		},
 		v1.EnvVar{
 			Name:  "PAIRING_FDO_RENDEZVOUS_URL",
-			Value: fmt.Sprintf("%s:%d", cr.Spec.Features.FDO.RendezvousServer.Host, rsPort),
+			Value: fmt.Sprintf("%s:%d", cr.Spec.FDO.RendezvousServer.Connection.Host, rsPort),
 		},
 		v1.EnvVar{
 			Name:  "ASTARTE_BASE_URL_DOMAIN",
