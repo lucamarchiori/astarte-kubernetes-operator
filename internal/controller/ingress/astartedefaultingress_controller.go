@@ -88,6 +88,36 @@ func (r *AstarteDefaultIngressReconciler) Reconcile(ctx context.Context, req ctr
 		return ctrl.Result{}, err
 	}
 
+	reconciler := controllerutils.ReconcileHelper{
+		Client: r.Client,
+		Scheme: r.Scheme,
+	}
+
+	// Check if Astarte is in manual maintenance mode
+	if astarte.Spec.ManualMaintenanceMode {
+		// If that is so, compute the status and quit.
+		if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			instance = &ingressv2alpha1.AstarteDefaultIngress{}
+			if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+				return err
+			}
+
+			instance.Status = reconciler.ComputeADIStatusResource(reqLogger, instance)
+
+			if err := r.Client.Status().Update(ctx, instance); err != nil {
+				reqLogger.Error(err, "Failed to update AstarteDefaultIngress status.")
+				return err
+			}
+			return nil
+		}); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// Notify and return
+		reqLogger.Info("AstarteDefaultIngress Reconciliation skipped due to Manual Maintenance Mode set true in Astarte CR. Hope you know what you're doing!")
+		return ctrl.Result{}, nil
+	}
+
 	// Reconcile the API Ingress
 	if err := defaultingress.EnsureAPIIngress(instance, astarte, r.Client, r.Scheme, reqLogger); err != nil {
 		return ctrl.Result{}, err
@@ -95,11 +125,6 @@ func (r *AstarteDefaultIngressReconciler) Reconcile(ctx context.Context, req ctr
 	// Reconcile the Broker Ingress
 	if err := defaultingress.EnsureBrokerIngress(instance, astarte, r.Client, r.Scheme, reqLogger); err != nil {
 		return ctrl.Result{}, err
-	}
-
-	reconciler := controllerutils.ReconcileHelper{
-		Client: r.Client,
-		Scheme: r.Scheme,
 	}
 
 	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
