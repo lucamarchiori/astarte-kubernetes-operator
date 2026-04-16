@@ -733,8 +733,9 @@ type AstartePodPrioritiesSpec struct {
 }
 
 type AstarteRendezvousServerConnectionSpec struct {
-	// TBD: Implement
 	HostAndPort `json:",inline"`
+	// +kubebuilder:validation:Optional
+	SSLConfiguration GenericSSLConfigurationSpec `json:"sslConfiguration,omitempty"`
 }
 
 type AstarteRendezvousServerSpec struct {
