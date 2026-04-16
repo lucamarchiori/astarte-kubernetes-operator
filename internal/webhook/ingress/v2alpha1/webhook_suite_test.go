@@ -31,6 +31,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	ingressv2alpha1 "github.com/astarte-platform/astarte-kubernetes-operator/api/ingress/v2alpha1"
+	apiv2alpha1 "github.com/astarte-platform/astarte-kubernetes-operator/api/api/v2alpha1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -47,11 +49,12 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	ctx       context.Context
-	cancel    context.CancelFunc
-	k8sClient client.Client
-	cfg       *rest.Config
-	testEnv   *envtest.Environment
+	ctx         context.Context
+	cancel      context.CancelFunc
+	k8sClient   client.Client
+	cfg         *rest.Config
+	testEnv     *envtest.Environment
+	baseAstarte *apiv2alpha1.Astarte
 )
 
 func TestAPIs(t *testing.T) {
@@ -67,6 +70,9 @@ var _ = BeforeSuite(func() {
 
 	var err error
 	err = ingressv2alpha1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = apiv2alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
@@ -112,6 +118,17 @@ var _ = BeforeSuite(func() {
 
 	err = SetupAstarteDefaultIngressWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
+
+	err = SetupAstarteFDOIngressWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+
+	manifestPath := filepath.Join(repoRoot, "test", "manifests", "api_v2alpha1_astarte_1.3.yaml")
+	manifestBytes, err := os.ReadFile(manifestPath)
+	Expect(err).ToNot(HaveOccurred())
+
+	baseAstarte = &apiv2alpha1.Astarte{}
+	err = yaml.Unmarshal(manifestBytes, baseAstarte)
+	Expect(err).ToNot(HaveOccurred())
 
 	// +kubebuilder:scaffold:webhook
 
