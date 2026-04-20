@@ -340,12 +340,12 @@ func computePersistentVolumeClaim(defaultName string, defaultSize *resource.Quan
 	}
 }
 
-// appendAstarteFDOEnvVars returns the environment variables needed to enable FDO support in Pairing
-func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
-	if cr.Spec.FDO == nil || !cr.Spec.FDO.Enable {
-		return append(ret, v1.EnvVar{Name: "PAIRING_ENABLE_FDO", Value: "false"})
+func appendAstarteRendezvousServerEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
+	if cr.Spec.FDO == nil || cr.Spec.FDO.RendezvousServer == nil {
+		return ret
 	}
 
+	// Here we are sure that RendezvousServer is set
 	scheme := "https"
 	port := 443
 	if !pointy.BoolValue(cr.Spec.API.SSL, true) {
@@ -356,10 +356,6 @@ func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvV
 	rsPort := pointy.Int32Value(cr.Spec.FDO.RendezvousServer.Connection.Port, 8041)
 
 	ret = append(ret,
-		v1.EnvVar{
-			Name:  "PAIRING_ENABLE_FDO",
-			Value: "true",
-		},
 		v1.EnvVar{
 			Name:  "PAIRING_FDO_RENDEZVOUS_URL",
 			Value: fmt.Sprintf("%s:%d", cr.Spec.FDO.RendezvousServer.Connection.Host, rsPort),
@@ -407,6 +403,22 @@ func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvV
 				Value: "true",
 			})
 		}
+	}
+
+	return ret
+
+}
+
+// appendAstarteFDOEnvVars returns the environment variables needed to enable FDO support in Pairing
+func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
+	fdoEnabled := cr.Spec.FDO != nil && cr.Spec.FDO.Enable
+
+	ret = append(ret, v1.EnvVar{Name: "PAIRING_ENABLE_FDO", Value: strconv.FormatBool(fdoEnabled)})
+
+	if fdoEnabled {
+		// At the moment, we only have the Rendezvous Server config.
+		// In the future we will have other envs to set
+		ret = appendAstarteRendezvousServerEnvVars(ret, cr)
 	}
 
 	return ret
@@ -794,8 +806,10 @@ func getAstarteCommonVolumes(cr *apiv2alpha1.Astarte) []v1.Volume {
 		})
 	}
 
-	// if FDO configuration struct is not initialized do not attempt to mount the secret
-	if cr.Spec.FDO != nil && cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+	// If the FDO rendezvous connection is not initialized, do not attempt to mount the secret.
+	if cr.Spec.FDO != nil &&
+		cr.Spec.FDO.RendezvousServer != nil &&
+		cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name != "" {
 		// Mount the secret!
 		ret = append(ret, v1.Volume{
 			Name: "rendezvous-ssl-ca",
@@ -836,7 +850,9 @@ func getAstarteCommonVolumeMounts(cr *apiv2alpha1.Astarte) []v1.VolumeMount {
 		})
 	}
 
-	if cr.Spec.FDO != nil && cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+	if cr.Spec.FDO != nil &&
+		cr.Spec.FDO.RendezvousServer != nil &&
+		cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name != "" {
 		// Mount the secret!
 		ret = append(ret, v1.VolumeMount{
 			Name:      "rendezvous-ssl-ca",

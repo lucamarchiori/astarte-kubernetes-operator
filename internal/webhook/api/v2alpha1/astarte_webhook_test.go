@@ -665,6 +665,49 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		})
 	})
 
+	Describe("TestValidateFDOConfiguration", func() {
+		BeforeEach(func() {
+			cr.Spec.FDO = nil
+		})
+
+		It("should not return an error when FDO is not configured", func() {
+			err := validateFDOConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should not return an error when FDO is disabled and rendezvousServer is unset", func() {
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           false,
+				RendezvousServer: nil,
+			}
+
+			err := validateFDOConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return an error when FDO is enabled and rendezvousServer is unset", func() {
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           true,
+				RendezvousServer: nil,
+			}
+
+			err := validateFDOConfiguration(cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Field).To(Equal("spec.fdo.rendezvousServer"))
+			Expect(err.Type).To(Equal(field.ErrorTypeRequired))
+		})
+
+		It("should not return an error when FDO is enabled and rendezvousServer is set", func() {
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           true,
+				RendezvousServer: &apiv2alpha1.AstarteRendezvousServerSpec{},
+			}
+
+			err := validateFDOConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
 	Describe("TestValidateCreateAstarteSystemKeyspace", func() {
 		BeforeEach(func() {
 			// Initialize Cassandra keyspace configuration for create testing

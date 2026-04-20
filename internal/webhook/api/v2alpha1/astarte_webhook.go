@@ -249,7 +249,22 @@ func validateAstarte(r *apiv2alpha1.Astarte) field.ErrorList {
 		allErrs = append(allErrs, err)
 	}
 
+	if err := validateFDOConfiguration(r); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
 	return allErrs
+}
+
+func validateFDOConfiguration(r *apiv2alpha1.Astarte) *field.Error {
+	if r.Spec.FDO != nil && r.Spec.FDO.Enable && r.Spec.FDO.RendezvousServer == nil {
+		fldPath := field.NewPath("spec").Child("fdo").Child("rendezvousServer")
+		err := errors.New("must be set when fdo.enable is true")
+		astartelog.Info(err.Error())
+		return field.Required(fldPath, err.Error())
+	}
+
+	return nil
 }
 
 func validateUpdateAstarteInstanceID(r *apiv2alpha1.Astarte, oldAstarte *apiv2alpha1.Astarte) *field.Error {

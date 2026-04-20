@@ -749,7 +749,7 @@ type AstarteFDOSpec struct {
 	// +kubebuilder:validation:Optional
 	Enable bool `json:"enable,omitempty"`
 	// +kubebuilder:validation:Optional
-	RendezvousServer AstarteRendezvousServerSpec `json:"rendezvousServer,omitempty"`
+	RendezvousServer *AstarteRendezvousServerSpec `json:"rendezvousServer,omitempty"`
 }
 
 func (a *AstartePodPrioritiesSpec) IsEnabled() bool {
