@@ -111,10 +111,19 @@ func (d *AstarteDefaultIngressCustomDefaulter) Default(_ context.Context, obj ru
 
 // applyDefaults applies default values to AstarteDefaultIngress fields.
 func (d *AstarteDefaultIngressCustomDefaulter) applyDefaults(adi *adiv2alpha1.AstarteDefaultIngress) {
-	// Set default Ingress Controller annotation if not set
-	if _, ok := adi.GetAnnotations()[adiv2alpha1.AnnotationIngressControllerSelector]; !ok {
-		adi.GetAnnotations()[adiv2alpha1.AnnotationIngressControllerSelector] = adiv2alpha1.HAProxySelectorValue
+	annotations := adi.GetAnnotations()
+
+	// Initialize the map if it's nil
+	if annotations == nil {
+		annotations = make(map[string]string)
 	}
+
+	// Set default Ingress Controller annotation if not set
+	if _, ok := annotations[adiv2alpha1.AnnotationIngressControllerSelector]; !ok {
+		annotations[adiv2alpha1.AnnotationIngressControllerSelector] = adiv2alpha1.HAProxySelectorValue
+	}
+
+	adi.SetAnnotations(annotations)
 
 	// Set default IngressClass if not set based on Ingress Controller selection
 	if adi.Spec.IngressClass == "" {
