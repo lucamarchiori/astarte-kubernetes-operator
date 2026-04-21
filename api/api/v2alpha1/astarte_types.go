@@ -743,6 +743,20 @@ type AstarteRendezvousServerSpec struct {
 	Connection AstarteRendezvousServerConnectionSpec `json:"connection,omitempty"`
 }
 
+type AstarteVaultSpec struct {
+	// +kubebuilder:validation:Optional
+	Connection AstarteVaultConnectionSpec `json:"connection,omitempty"`
+}
+
+type AstarteVaultConnectionSpec struct {
+	HostAndPort `json:",inline"`
+	// +kubebuilder:validation:Optional
+	SSLConfiguration GenericSSLConfigurationSpec `json:"sslConfiguration,omitempty"`
+	// The secret containing a token to login.
+	// +kubebuilder:validation:Optional
+	ConnectionStringSecret *ConnectionStringSecret `json:"connectionStringSecret,omitempty"`
+}
+
 // AstarteFDOSpec configures FDO support in Astarte.
 // This feature is EXPERIMENTAL, expect breaking changes in future releases.
 type AstarteFDOSpec struct {
@@ -750,6 +764,10 @@ type AstarteFDOSpec struct {
 	Enable bool `json:"enable,omitempty"`
 	// +kubebuilder:validation:Optional
 	RendezvousServer *AstarteRendezvousServerSpec `json:"rendezvousServer,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Vault is used to connect to a OpenBao or HashiCorp Vault instance to store FDO credentials.
+	// Setting this field is supported for Astarte version 1.4 and later.
+	Vault *AstarteVaultSpec `json:"vault,omitempty"`
 }
 
 func (a *AstartePodPrioritiesSpec) IsEnabled() bool {

@@ -416,9 +416,82 @@ func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvV
 	ret = append(ret, v1.EnvVar{Name: "PAIRING_ENABLE_FDO", Value: strconv.FormatBool(fdoEnabled)})
 
 	if fdoEnabled {
-		// At the moment, we only have the Rendezvous Server config.
-		// In the future we will have other envs to set
 		ret = appendAstarteRendezvousServerEnvVars(ret, cr)
+
+		// Check if Vault for FDO is supported by the Astarte version in use
+		astarteVersionCheck, err := version.NewChecker(cr.Spec.Version)
+		if err == nil && astarteVersionCheck.Supports(version.FDOVault) {
+			ret = appendAstarteVaultEnvVars(ret, cr)
+		}
+	}
+
+	return ret
+}
+
+// appendAstarteFDOVaultEnvVars returns the environment variables needed to enable FDO Vault support
+func appendAstarteVaultEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
+	if cr.Spec.FDO == nil || cr.Spec.FDO.Vault == nil {
+		return ret
+	}
+
+	vPort := pointy.Int32Value(cr.Spec.FDO.Vault.Connection.Port, 8200)
+
+	ret = append(ret,
+		v1.EnvVar{
+			Name:  "ASTARTE_VAULT_URL",
+			Value: fmt.Sprintf("%s:%d", cr.Spec.FDO.Vault.Connection.Host, vPort),
+		},
+	)
+
+	// Vault authentication configuration
+	if cr.Spec.FDO.Vault.Connection.ConnectionStringSecret != nil {
+		ret = append(ret,
+			v1.EnvVar{
+				Name:  "ASTARTE_VAULT_AUTHENTICATION_MECHANISM",
+				Value: "token",
+			},
+		)
+
+		ret = append(ret,
+			v1.EnvVar{
+				Name: "ASTARTE_VAULT_TOKEN",
+				ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{Name: cr.Spec.FDO.Vault.Connection.ConnectionStringSecret.Name},
+					Key:                  cr.Spec.FDO.Vault.Connection.ConnectionStringSecret.Key,
+				}},
+			},
+		)
+	}
+
+	// Vault SSL configuration
+	if cr.Spec.FDO.Vault.Connection.SSLConfiguration.Enable {
+		ret = append(ret, v1.EnvVar{
+			Name:  "ASTARTE_VAULT_SSL_ENABLED",
+			Value: "true",
+		})
+
+		// CA configuration
+		if cr.Spec.FDO.Vault.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+			// getAstarteCommonVolumes will mount the volume for us, if we're here. So trust the rest of our code.
+			ret = append(ret, v1.EnvVar{
+				Name:  "ASTARTE_VAULT_SSL_CA_FILE",
+				Value: "/fdo-vault/ca.crt",
+			})
+		}
+
+		// SNI configuration
+		switch {
+		case cr.Spec.FDO.Vault.Connection.SSLConfiguration.CustomSNI != "":
+			ret = append(ret, v1.EnvVar{
+				Name:  "ASTARTE_VAULT_SSL_CUSTOM_SNI",
+				Value: cr.Spec.FDO.Vault.Connection.SSLConfiguration.CustomSNI,
+			})
+		case !pointy.BoolValue(cr.Spec.FDO.Vault.Connection.SSLConfiguration.SNI, true):
+			ret = append(ret, v1.EnvVar{
+				Name:  "ASTARTE_VAULT_SSL_DISABLE_SNI",
+				Value: "true",
+			})
+		}
 	}
 
 	return ret
