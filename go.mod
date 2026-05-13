@@ -9,6 +9,7 @@ require (
 	github.com/imdario/mergo v0.3.13
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
+	github.com/prometheus/client_golang v1.19.1
 	go.openly.dev/pointy v1.3.0
 	k8s.io/api v0.32.1
 	k8s.io/apimachinery v0.32.1
@@ -57,7 +58,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/prometheus/client_golang v1.19.1 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect

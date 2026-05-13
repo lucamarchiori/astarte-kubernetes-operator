@@ -37,6 +37,7 @@ import (
 	apiv2alpha1webhook "github.com/astarte-platform/astarte-kubernetes-operator/internal/webhook/api/v2alpha1"
 	flowv2alpha1webhook "github.com/astarte-platform/astarte-kubernetes-operator/internal/webhook/flow/v2alpha1"
 	ingressv2alpha1webhook "github.com/astarte-platform/astarte-kubernetes-operator/internal/webhook/ingress/v2alpha1"
+	monitoring "github.com/astarte-platform/astarte-kubernetes-operator/monitoring"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -61,6 +62,7 @@ func init() {
 	utilruntime.Must(ingressv2alpha1.AddToScheme(scheme))
 	utilruntime.Must(apiv2alpha1.AddToScheme(scheme))
 	utilruntime.Must(flowv2alpha1.AddToScheme(scheme))
+	monitoring.RegisterMetrics()
 	// +kubebuilder:scaffold:scheme
 }
 

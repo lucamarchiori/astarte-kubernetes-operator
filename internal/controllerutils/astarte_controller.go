@@ -39,6 +39,7 @@ import (
 	"github.com/astarte-platform/astarte-kubernetes-operator/internal/misc"
 	recon "github.com/astarte-platform/astarte-kubernetes-operator/internal/reconcile"
 	"github.com/astarte-platform/astarte-kubernetes-operator/internal/version"
+	monitoring "github.com/astarte-platform/astarte-kubernetes-operator/monitoring"
 )
 
 // ReconcileHelper contains all needed objects to carry over reconciliation of an Astarte-like resource
@@ -58,6 +59,11 @@ func (r *ReconcileHelper) CheckAndPerformUpgrade(reqLogger logr.Logger, instance
 	// due to a temporary issue) we don't want to trust the computed health exclusively if the upgrade started at a time
 	// when the cluster was healthy. As such, proceed if one among the computed health and the reported health are green.
 	computedClusterHealth := r.ComputeClusterHealth(reqLogger, instance)
+	if computedClusterHealth == apiv2alpha1.AstarteClusterHealthGreen {
+		monitoring.AstarteClusterHealth.Set(1)
+	} else {
+		monitoring.AstarteClusterHealth.Set(0)
+	}
 	if computedClusterHealth != apiv2alpha1.AstarteClusterHealthGreen && instance.Status.Health != apiv2alpha1.AstarteClusterHealthGreen {
 		reqLogger.Error(fmt.Errorf("astarte upgrade requested, but the cluster isn't reporting stable health. Refusing to upgrade"),
 			"Cluster health is unstable, refusing to upgrade. Please revert to the previous version and wait for the cluster to settle.",
