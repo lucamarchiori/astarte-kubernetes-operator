@@ -22,3 +22,10 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
+
+# -- Metrics configuration.
+metrics:
+  # -- Port to expose metrics on. Set to 0 to disable.
+  port: 0
+  # -- Enable or disable TLS for metrics.
+  secure: false

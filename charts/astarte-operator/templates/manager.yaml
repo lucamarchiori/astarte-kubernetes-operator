@@ -23,6 +23,8 @@ spec:
       - args:
         - --leader-elect
         - --health-probe-bind-address=:8081
+        - --metrics-bind-address=:{{ .Values.metrics.port }}
+        - --metrics-secure={{ .Values.metrics.secure }}
         command:
         - /manager
         image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
@@ -37,6 +39,9 @@ spec:
         ports:
         - containerPort: 9443
           name: webhook-server
+          protocol: TCP
+        - containerPort: {{ .Values.metrics.port }}
+          name: metrics
           protocol: TCP
         readinessProbe:
           httpGet:
