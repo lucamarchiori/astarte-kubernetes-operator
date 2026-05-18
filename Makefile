@@ -106,6 +106,10 @@ manifests: controller-gen yq kustomize ## Generate WebhookConfiguration, Cluster
 	# and inject helm templates for setting values
 	@sed -i "s/replicas:.*/replicas: {{ .Values.replicaCount }}/g" charts/astarte-operator/templates/manager.yaml
 	@sed -i "s/image:.*/image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'/g" charts/astarte-operator/templates/manager.yaml
+	# inject metrics helm templates
+	@sed -i 's/--metrics-bind-address=:8080/--metrics-bind-address={{ .Values.metrics.enable | ternary (printf ":%v" .Values.metrics.port) "0" }}/g' charts/astarte-operator/templates/manager.yaml
+	@sed -i 's/.*- containerPort: 8080.*/        {{- if .Values.metrics.enable }}\n        - containerPort: {{ .Values.metrics.port }}/g' charts/astarte-operator/templates/manager.yaml
+	@sed -i '/name: metrics/{n;s/.*/&\n        {{- end }}/}' charts/astarte-operator/templates/manager.yaml
 	$(KUSTOMIZE) build config/helm-webhook > charts/astarte-operator/templates/webhook.yaml
 
 .PHONY: generate

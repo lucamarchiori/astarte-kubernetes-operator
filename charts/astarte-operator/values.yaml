@@ -22,3 +22,8 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
+
+# -- Metrics configuration.
+metrics:
+  enable: false
+  port: 8080
