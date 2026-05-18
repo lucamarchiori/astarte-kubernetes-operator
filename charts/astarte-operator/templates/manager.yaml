@@ -23,6 +23,8 @@ spec:
       - args:
         - --leader-elect
         - --health-probe-bind-address=:8081
+        - --metrics-bind-address={{ .Values.metrics.enable | ternary (printf ":%v" .Values.metrics.port) "0" }}
+        - --metrics-secure=false
         command:
         - /manager
         image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
@@ -35,6 +37,11 @@ spec:
           periodSeconds: 20
         name: manager
         ports:
+        {{- if .Values.metrics.enable }}
+        - containerPort: {{ .Values.metrics.port }}
+          name: metrics
+          protocol: TCP
+        {{- end }}
         - containerPort: 9443
           name: webhook-server
           protocol: TCP
