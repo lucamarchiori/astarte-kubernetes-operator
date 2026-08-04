@@ -36,6 +36,7 @@ import (
 
 	apiv2alpha1 "github.com/astarte-platform/astarte-kubernetes-operator/api/api/v2alpha1"
 	"github.com/astarte-platform/astarte-kubernetes-operator/internal/misc"
+	"github.com/astarte-platform/astarte-kubernetes-operator/internal/version"
 )
 
 // EnsureAstarteGenericAPI reconciles any component compatible with AstarteGenericAPISpec with a custom Probe
@@ -103,7 +104,7 @@ func EnsureAstarteGenericAPIComponent(cr *apiv2alpha1.Astarte, api apiv2alpha1.A
 		}
 
 		// Assign the Spec.
-		deployment.ObjectMeta.Labels = labels
+		deployment.Labels = labels
 		deployment.Spec = deploymentSpec
 		deployment.Spec.Replicas = getReplicaCountForResource(&api.AstarteGenericClusteredResource, cr, c, reqLogger)
 
@@ -118,8 +119,8 @@ func EnsureAstarteGenericAPIComponent(cr *apiv2alpha1.Astarte, api apiv2alpha1.A
 }
 
 func checkShouldDeploy(reqLogger logr.Logger, deploymentName string, cr *apiv2alpha1.Astarte, api apiv2alpha1.AstarteGenericAPIComponentSpec,
-	component apiv2alpha1.AstarteComponent, c client.Client) bool {
-	defaultDeployValue := true
+	component apiv2alpha1.AstarteComponent, c client.Client) (defaultDeployValue bool) {
+	defaultDeployValue = true
 	// Flow should be deployed only if explicitly requested
 	if component == apiv2alpha1.FlowComponent {
 		defaultDeployValue = false
@@ -388,6 +389,11 @@ func getAstarteHousekeepingEnvVars(cr *apiv2alpha1.Astarte) []v1.EnvVar {
 func getAstartePairingEnvVars(cr *apiv2alpha1.Astarte) []v1.EnvVar {
 	ret := []v1.EnvVar{}
 
+	ret = append(ret, v1.EnvVar{
+		Name:  "REALM_MANAGEMENT_CLUSTERING_KUBERNETES_SELECTOR",
+		Value: fmt.Sprint("app=", cr.Name, "-realm-management"),
+	})
+
 	ret = append(ret,
 		v1.EnvVar{
 			Name:  "PAIRING_CFSSL_URL",
@@ -403,6 +409,13 @@ func getAstartePairingEnvVars(cr *apiv2alpha1.Astarte) []v1.EnvVar {
 
 	// FDO support
 	ret = appendAstarteFDOEnvVars(ret, cr)
+
+	// Vault support (available since Astarte 1.4)
+	if astarteVersionCheck, err := version.NewChecker(cr.Spec.Version); err != nil {
+		log.Info("skipping Vault env var injection: invalid Astarte version", "version", cr.Spec.Version, "error", err)
+	} else if astarteVersionCheck.Supports(version.Vault) {
+		ret = appendAstarteVaultEnvVars(ret, cr)
+	}
 
 	return ret
 }

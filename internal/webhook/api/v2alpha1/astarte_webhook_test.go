@@ -20,8 +20,6 @@ limitations under the License.
 package v2alpha1
 
 import (
-	"context"
-
 	apiv2alpha1 "github.com/astarte-platform/astarte-kubernetes-operator/api/api/v2alpha1"
 	integrationutils "github.com/astarte-platform/astarte-kubernetes-operator/test/integration"
 	. "github.com/onsi/ginkgo/v2"
@@ -70,7 +68,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 	})
 
 	AfterEach(func() {
-		integrationutils.TeardownResourcesInNamespace(context.Background(), k8sClient, CustomAstarteNamespace)
+		integrationutils.TeardownResourcesInNamespace(ctx, k8sClient, CustomAstarteNamespace)
 	})
 
 	Describe("TestValidateSSLListener", func() {
@@ -129,11 +127,11 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 					"key":  []byte("my-key"),
 				},
 			}
-			Expect(k8sClient.Create(context.Background(), secret)).To(Succeed())
+			Expect(k8sClient.Create(ctx, secret)).To(Succeed())
 
 			// Ensure the secret is created and available in the client cache
 			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{Name: secretName, Namespace: CustomAstarteNamespace}, &v1.Secret{})
+				return k8sClient.Get(ctx, types.NamespacedName{Name: secretName, Namespace: CustomAstarteNamespace}, &v1.Secret{})
 			}, Timeout, Interval).Should(Succeed())
 
 			// Wait for the validation to pass - give more time for webhook client cache sync
@@ -143,10 +141,10 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			}, Timeout, Interval).Should(BeTrue())
 
 			// Cleanup the secret
-			Expect(k8sClient.Delete(context.Background(), secret)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, secret)).To(Succeed())
 
 			Eventually(func() bool {
-				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: secretName, Namespace: CustomAstarteNamespace}, &v1.Secret{})
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: secretName, Namespace: CustomAstarteNamespace}, &v1.Secret{})
 				return apierrors.IsNotFound(err)
 			}, Timeout, Interval).Should(BeTrue())
 		})
@@ -557,7 +555,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		It("should return an error when trying to change the keyspace", func() {
 			oldAstarte.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{
 				ReplicationStrategy:   "SimpleStrategy",
-				ReplicationFactor:     1,
+				ReplicationFactor:     pointy.Int(1),
 				DataCenterReplication: "dc1:3,dc2:2",
 			}
 			cr.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{
@@ -573,23 +571,15 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		It("should NOT return an error when the keyspace is unchanged", func() {
 			oldAstarte.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{
 				ReplicationStrategy:   "SimpleStrategy",
-				ReplicationFactor:     1,
+				ReplicationFactor:     pointy.Int(1),
 				DataCenterReplication: "dc1:3,dc2:2",
 			}
 
 			cr.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{
 				ReplicationStrategy:   "SimpleStrategy",
-				ReplicationFactor:     1,
+				ReplicationFactor:     pointy.Int(1),
 				DataCenterReplication: "dc1:3,dc2:2",
 			}
-
-			err := validateUpdateAstarteSystemKeyspace(cr, oldAstarte)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should NOT return an error when the keyspace is empty in both old and new spec", func() {
-			oldAstarte.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{}
-			cr.Spec.Cassandra.AstarteSystemKeyspace = apiv2alpha1.AstarteSystemKeyspaceSpec{}
 
 			err := validateUpdateAstarteSystemKeyspace(cr, oldAstarte)
 			Expect(err).ToNot(HaveOccurred())
@@ -673,6 +663,193 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		})
 	})
 
+	Describe("TestValidateFDOConfiguration", func() {
+		BeforeEach(func() {
+			cr.Spec.FDO = nil
+			cr.Spec.Version = "1.3.0"
+		})
+
+		It("should not return an error when FDO is not configured", func() {
+			err := validateFDOConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should not return an error when FDO is disabled and rendezvousServer is unset", func() {
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           false,
+				RendezvousServer: nil,
+			}
+
+			err := validateFDOConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return an error when FDO is enabled and rendezvousServer is unset", func() {
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           true,
+				RendezvousServer: nil,
+			}
+
+			err := validateFDOConfiguration(cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Field).To(Equal("spec.fdo.rendezvousServer"))
+			Expect(err.Type).To(Equal(field.ErrorTypeRequired))
+		})
+
+		It("should not return an error when FDO is enabled and rendezvousServer is set", func() {
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           true,
+				RendezvousServer: &apiv2alpha1.AstarteRendezvousServerSpec{},
+			}
+
+			err := validateFDOConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return an error when FDO is disabled on Astarte >= 1.4", func() {
+			cr.Spec.Version = "1.4.0"
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           false,
+				RendezvousServer: &apiv2alpha1.AstarteRendezvousServerSpec{},
+			}
+			err := validateFDOConfiguration(cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Field).To(Equal("spec.fdo.enable"))
+			Expect(err.Type).To(Equal(field.ErrorTypeInvalid))
+		})
+
+		It("should return an error when FDO is disabled on Astarte > 1.4", func() {
+			cr.Spec.Version = "1.4.5"
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           false,
+				RendezvousServer: &apiv2alpha1.AstarteRendezvousServerSpec{},
+			}
+			err := validateFDOConfiguration(cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Field).To(Equal("spec.fdo.enable"))
+		})
+
+		It("should not return an error when FDO is disabled on Astarte 1.3", func() {
+			cr.Spec.Version = "1.3.0"
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable: false,
+			}
+			err := validateFDOConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return an error when FDO is enabled and rendezvousServer is unset on Astarte >= 1.4", func() {
+			cr.Spec.Version = "1.4.0"
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           true,
+				RendezvousServer: nil,
+			}
+			err := validateFDOConfiguration(cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Field).To(Equal("spec.fdo.rendezvousServer"))
+			Expect(err.Type).To(Equal(field.ErrorTypeRequired))
+		})
+
+		It("should handle invalid version strings gracefully", func() {
+			cr.Spec.Version = "invalid"
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           false,
+				RendezvousServer: nil,
+			}
+			err := validateFDOConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Describe("TestDefaultFDO", func() {
+		BeforeEach(func() {
+			cr.Spec.FDO = nil
+			cr.Spec.Version = "1.3.0"
+		})
+
+		It("should set FDO to enabled when unset on Astarte >= 1.4", func() {
+			cr.Spec.Version = "1.4.0"
+			cr.Spec.FDO = nil
+			defaultFDO(cr)
+			Expect(cr.Spec.FDO).ToNot(BeNil())
+			Expect(cr.Spec.FDO.Enable).To(BeTrue())
+		})
+
+		It("should not modify FDO when already set on Astarte >= 1.4", func() {
+			cr.Spec.Version = "1.4.0"
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{Enable: false}
+			defaultFDO(cr)
+			Expect(cr.Spec.FDO.Enable).To(BeFalse())
+		})
+
+		It("should not set FDO when unset on Astarte 1.3", func() {
+			cr.Spec.Version = "1.3.0"
+			cr.Spec.FDO = nil
+			defaultFDO(cr)
+			Expect(cr.Spec.FDO).To(BeNil())
+		})
+
+		It("should handle invalid version strings gracefully", func() {
+			cr.Spec.Version = "invalid"
+			cr.Spec.FDO = nil
+			defaultFDO(cr)
+			Expect(cr.Spec.FDO).To(BeNil())
+		})
+	})
+
+	Describe("TestValidateVaultConfiguration", func() {
+		BeforeEach(func() {
+			cr.Spec.Vault = nil
+			cr.Spec.Version = "1.4.0"
+		})
+
+		It("should return an error when Vault is not configured and version is 1.4.0 or above", func() {
+			cr.Spec.Vault = nil
+			err := validateVaultConfiguration(cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Field).To(Equal("spec.vault"))
+			Expect(err.Type).To(Equal(field.ErrorTypeRequired))
+		})
+
+		It("should not return an error when Vault is not configured and version is older than 1.4.0", func() {
+			cr.Spec.Version = "1.3.0"
+			cr.Spec.Vault = nil
+			err := validateVaultConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should not return an error when Vault is configured with version 1.4.0", func() {
+			cr.Spec.Vault = &apiv2alpha1.AstarteVaultSpec{}
+			err := validateVaultConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should not return an error when Vault is configured with version newer than 1.4.0", func() {
+			cr.Spec.Version = "1.4.0"
+			cr.Spec.Vault = &apiv2alpha1.AstarteVaultSpec{}
+			err := validateVaultConfiguration(cr)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return an error when Vault is configured with version older than 1.4.0", func() {
+			cr.Spec.Version = "1.3.0"
+			cr.Spec.Vault = &apiv2alpha1.AstarteVaultSpec{}
+			err := validateVaultConfiguration(cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Field).To(Equal("spec.vault"))
+			Expect(err.Type).To(Equal(field.ErrorTypeInvalid))
+		})
+
+		It("should return an error when Vault is configured with invalid version string", func() {
+			cr.Spec.Version = "invalid"
+			cr.Spec.Vault = &apiv2alpha1.AstarteVaultSpec{}
+			err := validateVaultConfiguration(cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Field).To(Equal("spec.version"))
+			Expect(err.Type).To(Equal(field.ErrorTypeInvalid))
+		})
+	})
+
 	Describe("TestValidateCreateAstarteSystemKeyspace", func() {
 		BeforeEach(func() {
 			// Initialize Cassandra keyspace configuration for create testing
@@ -681,9 +858,18 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			}
 		})
 
+		It("should return error with SimpleStrategy and no replication factor", func() {
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationStrategy = "SimpleStrategy"
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = nil
+
+			err := validateCreateAstarteSystemKeyspace(cr)
+			Expect(err).ToNot(BeNil())
+			Expect(err[0].Field).To(Equal("spec.cassandra.astarteSystemKeyspace.replicationFactor"))
+		})
+
 		It("should not return error with SimpleStrategy and valid odd replication factor", func() {
 			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationStrategy = "SimpleStrategy"
-			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = 3
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = pointy.Int(3)
 
 			err := validateCreateAstarteSystemKeyspace(cr)
 			Expect(err).ToNot(BeNil())
@@ -692,7 +878,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 
 		It("should return an error with SimpleStrategy and zero replication factor", func() {
 			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationStrategy = "SimpleStrategy"
-			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = 0
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = pointy.Int(0)
 
 			err := validateCreateAstarteSystemKeyspace(cr)
 			Expect(err).ToNot(BeNil())
@@ -720,7 +906,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 
 		It("should return an error with SimpleStrategy and invalid even replication factor", func() {
 			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationStrategy = "SimpleStrategy"
-			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = 2
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = pointy.Int(2)
 
 			err := validateCreateAstarteSystemKeyspace(cr)
 			Expect(err).ToNot(BeNil())
@@ -803,7 +989,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			cr.Spec.Cassandra = apiv2alpha1.AstarteCassandraSpec{
 				AstarteSystemKeyspace: apiv2alpha1.AstarteSystemKeyspaceSpec{
 					ReplicationStrategy: "SimpleStrategy",
-					ReplicationFactor:   3,
+					ReplicationFactor:   pointy.Int(3),
 				},
 			}
 		})
@@ -811,7 +997,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		It("should succeed when spec passes all validations", func() {
 			cr.Spec.AstarteInstanceID = "coverageid1"
 			validator := &AstarteCustomValidator{}
-			w, err := validator.ValidateCreate(context.Background(), cr)
+			w, err := validator.ValidateCreate(ctx, cr)
 			Expect(w).To(BeNil())
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -820,7 +1006,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			cr.Spec.AstarteInstanceID = "coverageid2"
 			cr.Spec.VerneMQ = apiv2alpha1.AstarteVerneMQSpec{SSLListener: pointy.Bool(true), SSLListenerCertSecretName: ""}
 			validator := &AstarteCustomValidator{}
-			w, err := validator.ValidateCreate(context.Background(), cr)
+			w, err := validator.ValidateCreate(ctx, cr)
 			Expect(w).To(BeNil())
 			Expect(err).To(HaveOccurred())
 			Expect(apierrors.IsInvalid(err)).To(BeTrue())
@@ -828,12 +1014,39 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 
 		It("should return invalid when keyspace has invalid replication factor", func() {
 			cr.Spec.AstarteInstanceID = "coverageid3"
-			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = 2 // Even number - invalid
+			cr.Spec.Cassandra.AstarteSystemKeyspace.ReplicationFactor = pointy.Int(2) // Even number - invalid
 			validator := &AstarteCustomValidator{}
-			w, err := validator.ValidateCreate(context.Background(), cr)
+			w, err := validator.ValidateCreate(ctx, cr)
 			Expect(w).To(BeNil())
 			Expect(err).To(HaveOccurred())
 			Expect(apierrors.IsInvalid(err)).To(BeTrue())
+		})
+
+		It("should return invalid when FDO is explicitly disabled on Astarte >= 1.4", func() {
+			cr.Spec.Version = "1.4.0"
+			cr.Spec.AstarteInstanceID = "coverageid4"
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable:           false,
+				RendezvousServer: &apiv2alpha1.AstarteRendezvousServerSpec{},
+			}
+			validator := &AstarteCustomValidator{}
+			w, err := validator.ValidateCreate(ctx, cr)
+			Expect(w).To(BeNil())
+			Expect(err).To(HaveOccurred())
+			Expect(apierrors.IsInvalid(err)).To(BeTrue())
+		})
+
+		It("should succeed when FDO is disabled on Astarte 1.3", func() {
+			cr.Spec.Version = "1.3.0"
+			cr.Spec.Vault = nil
+			cr.Spec.AstarteInstanceID = "coverageid5"
+			cr.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+				Enable: false,
+			}
+			validator := &AstarteCustomValidator{}
+			w, err := validator.ValidateCreate(ctx, cr)
+			Expect(w).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
@@ -849,7 +1062,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			oldObj.Spec.AstarteInstanceID = "old"
 			cr.Spec.AstarteInstanceID = "new"
 			validator := &AstarteCustomValidator{}
-			w, err := validator.ValidateUpdate(context.Background(), cr, oldObj)
+			w, err := validator.ValidateUpdate(ctx, cr, oldObj)
 			Expect(w).To(BeNil())
 			Expect(err).To(HaveOccurred())
 			Expect(apierrors.IsInvalid(err)).To(BeTrue())
@@ -859,7 +1072,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			oldObj.Spec.Cassandra = apiv2alpha1.AstarteCassandraSpec{
 				AstarteSystemKeyspace: apiv2alpha1.AstarteSystemKeyspaceSpec{
 					ReplicationStrategy: "SimpleStrategy",
-					ReplicationFactor:   3,
+					ReplicationFactor:   pointy.Int(3),
 				},
 			}
 			cr.Spec.Cassandra = apiv2alpha1.AstarteCassandraSpec{
@@ -868,7 +1081,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 				},
 			}
 			validator := &AstarteCustomValidator{}
-			w, err := validator.ValidateUpdate(context.Background(), cr, oldObj)
+			w, err := validator.ValidateUpdate(ctx, cr, oldObj)
 			Expect(w).To(BeNil())
 			Expect(err).To(HaveOccurred())
 			Expect(apierrors.IsInvalid(err)).To(BeTrue())
@@ -880,7 +1093,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			cr.Spec.AstarteInstanceID = "same"
 			cr.Spec.Cassandra = apiv2alpha1.AstarteCassandraSpec{AstarteSystemKeyspace: apiv2alpha1.AstarteSystemKeyspaceSpec{}}
 			validator := &AstarteCustomValidator{}
-			w, err := validator.ValidateUpdate(context.Background(), cr, oldObj)
+			w, err := validator.ValidateUpdate(ctx, cr, oldObj)
 			Expect(w).To(BeNil())
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -926,7 +1139,7 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		// The function is not implemented, expect nil, nil
 		It("should return nil, nil", func() {
 			validator := &AstarteCustomValidator{}
-			w, err := validator.ValidateDelete(context.Background(), cr)
+			w, err := validator.ValidateDelete(ctx, cr)
 			Expect(w).To(BeNil())
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -936,27 +1149,27 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		It("should not return error for instance ID when no other same IDs exist", func() {
 			// In the beforeEach of the parent Describe, a CR with empty ID is created
 			newCr := cr.DeepCopy()
-			newCr.ObjectMeta.Name = "test-empty-id-no-conflict"
+			newCr.Name = "test-empty-id-no-conflict"
 			newCr.Spec.AstarteInstanceID = "a1"
 			newCr.ResourceVersion = ""
 
 			// Create should succeed
 			Eventually(func() error {
-				return k8sClient.Create(context.Background(), newCr)
+				return k8sClient.Create(ctx, newCr)
 			}, Timeout, Interval).Should(Succeed())
 
 			// Fetch to ensure it's created
 			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{Name: newCr.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
+				return k8sClient.Get(ctx, types.NamespacedName{Name: newCr.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
 			}, Timeout, Interval).Should(Succeed())
 
 			// Cleanup
 			Eventually(func() error {
-				return k8sClient.Delete(context.Background(), newCr)
+				return k8sClient.Delete(ctx, newCr)
 			}, Timeout, Interval).Should(Succeed())
 
 			Eventually(func() bool {
-				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: newCr.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: newCr.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
 				return apierrors.IsNotFound(err)
 			}, Timeout, Interval).Should(BeTrue())
 		})
@@ -965,13 +1178,13 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			// A CR with empty ID is already created in the beforeEach of the parent Describe
 			// Now try to create another with empty ID - should fail
 			newCr := cr.DeepCopy()
-			newCr.ObjectMeta.Name = "test-empty-id-conflict"
+			newCr.Name = "test-empty-id-conflict"
 			newCr.Spec.AstarteInstanceID = ""
 			newCr.ResourceVersion = ""
 
 			// Create should fail due to webhook rejection
 			Eventually(func() error {
-				return k8sClient.Create(context.Background(), newCr)
+				return k8sClient.Create(ctx, newCr)
 			}, Timeout, Interval).ShouldNot(Succeed())
 
 			// Test the validator directly
@@ -985,30 +1198,30 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			// We create a CR with a specific instanceID, then try to create another with the same ID
 			// Create a CR with a specific instanceID
 			cr1 := cr.DeepCopy()
-			cr1.ObjectMeta.Name = "first-astarte-unique"
+			cr1.Name = "first-astarte-unique"
 			cr1.Spec.AstarteInstanceID = "myuniqueinstanceid001"
 			cr1.ResourceVersion = ""
 
 			// Create should succeed
 			Eventually(func() error {
-				return k8sClient.Create(context.Background(), cr1)
+				return k8sClient.Create(ctx, cr1)
 			}, Timeout, Interval).Should(Succeed())
 
 			// Fetch to ensure it's created
 			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{Name: cr1.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
+				return k8sClient.Get(ctx, types.NamespacedName{Name: cr1.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
 			}, Timeout, Interval).Should(Succeed())
 
 			// Try to validate a new CR with the same instanceID
 			cr2 := cr1.DeepCopy()
-			cr2.ObjectMeta.Name = "second-astarte-unique"
+			cr2.Name = "second-astarte-unique"
 			cr2.ResourceVersion = ""
 			// Keep same instanceID
 			// Create should fail due to webhook rejection
 
 			// Create should not succeed
 			Eventually(func() error {
-				return k8sClient.Create(context.Background(), cr2)
+				return k8sClient.Create(ctx, cr2)
 			}, Timeout, Interval).Should(Not(Succeed()))
 
 			// Test the validator directly
@@ -1018,9 +1231,9 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 			}, Timeout, Interval).Should(BeTrue())
 
 			// Cleanup
-			Expect(k8sClient.Delete(context.Background(), cr1)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, cr1)).To(Succeed())
 			Eventually(func() bool {
-				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: cr1.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: cr1.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
 				return apierrors.IsNotFound(err)
 			}, Timeout, Interval).Should(BeTrue())
 		})
@@ -1028,46 +1241,46 @@ var _ = Describe("Astarte Webhook testing", Ordered, Serial, func() {
 		It("should not return error if no other Astarte instances exists with same instanceID", func() {
 			// We create a CR with a specific instanceID, then try to create another with a different ID
 			cr1 := cr.DeepCopy()
-			cr1.ObjectMeta.Name = "first-astarte-unique"
+			cr1.Name = "first-astarte-unique"
 			cr1.Spec.AstarteInstanceID = "myuniqueinstanceid002a"
 			cr1.ResourceVersion = ""
 
 			// Create should succeed
 			Eventually(func() error {
-				return k8sClient.Create(context.Background(), cr1)
+				return k8sClient.Create(ctx, cr1)
 			}, Timeout, Interval).Should(Succeed())
 
 			// Fetch to ensure it's created
 			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{Name: cr1.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
+				return k8sClient.Get(ctx, types.NamespacedName{Name: cr1.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
 			}, Timeout, Interval).Should(Succeed())
 
 			// Create another with a different instanceID
 			cr2 := cr1.DeepCopy()
-			cr2.ObjectMeta.Name = "second-astarte-unique"
+			cr2.Name = "second-astarte-unique"
 			cr2.Spec.AstarteInstanceID = "myuniqueinstanceid002b"
 			cr2.ResourceVersion = ""
 
 			// Create should succeed
 			Eventually(func() error {
-				return k8sClient.Create(context.Background(), cr2)
+				return k8sClient.Create(ctx, cr2)
 			}, Timeout, Interval).Should(Succeed())
 
 			// Fetch to ensure it's created
 			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{Name: cr2.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
+				return k8sClient.Get(ctx, types.NamespacedName{Name: cr2.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
 			}, Timeout, Interval).Should(Succeed())
 
 			// Cleanup
-			Expect(k8sClient.Delete(context.Background(), cr1)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, cr1)).To(Succeed())
 			Eventually(func() bool {
-				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: cr1.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: cr1.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
 				return apierrors.IsNotFound(err)
 			}, Timeout, Interval).Should(BeTrue())
 
-			Expect(k8sClient.Delete(context.Background(), cr2)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, cr2)).To(Succeed())
 			Eventually(func() bool {
-				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: cr2.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: cr2.Name, Namespace: CustomAstarteNamespace}, &apiv2alpha1.Astarte{})
 				return apierrors.IsNotFound(err)
 			}, Timeout, Interval).Should(BeTrue())
 		})

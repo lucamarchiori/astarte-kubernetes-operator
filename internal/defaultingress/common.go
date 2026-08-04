@@ -45,7 +45,7 @@ func buildContentSecurityPolicy(cr *ingressv2alpha1.AstarteDefaultIngress, paren
 	}
 
 	backend := parent.Spec.API.Host
-	var parts []string
+	parts := make([]string, 0, 7)
 
 	// The best practice for CSP would be to deny everything and allow only
 	// the content we need from the sources we trust.
@@ -116,6 +116,7 @@ func getCommonIngressAnnotations(cr *ingressv2alpha1.AstarteDefaultIngress, pare
 	annotations = map[string]string{
 		"haproxy.org/backend-config-snippet": getHAProxyBackendConfig(parent),
 		"haproxy.org/ssl-redirect":           strconv.FormatBool(apiSslRedirect),
+		"haproxy.org/ssl-redirect-port":      "443",
 		"haproxy.org/response-set-header": "\n" +
 			"Content-Security-Policy " + buildContentSecurityPolicy(cr, parent) + "\n" +
 			"X-Content-Type-Options nosniff\n" +

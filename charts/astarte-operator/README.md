@@ -1,6 +1,6 @@
 # astarte-operator
 
-![Version: 25.5.0-dev](https://img.shields.io/badge/Version-25.5.0--dev-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.5.0-dev](https://img.shields.io/badge/AppVersion-25.5.0--dev-informational?style=flat-square)
+![Version: 26.7.0-rc.2](https://img.shields.io/badge/Version-26.7.0--rc.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 26.7.0-rc.2](https://img.shields.io/badge/AppVersion-26.7.0--rc.2-informational?style=flat-square)
 
 The Astarte Kubernetes Operator Helm Chart.
 
@@ -12,6 +12,8 @@ The Astarte Kubernetes Operator Helm Chart.
 | ---- | ------ | --- |
 | matt-mazzucato | mattia.mazzucato@secomind.com |  |
 | annopaolo | arnaldo.cesco@secomind.com |  |
+| lucamarchiori | luca.marchiori@secomind.com |  |
+| guicrocetti | guilherme.crocetti@secomind.com |  |
 
 ## Source Code
 
@@ -27,7 +29,7 @@ Kubernetes: `>= 1.24.0-0`
 |-----|------|---------|-------------|
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"astarte/astarte-kubernetes-operator"` |  |
-| image.tag | string | `"snapshot"` | Overrides the image tag whose default is the chart appVersion. |
+| image.tag | string | `"26.7.0-rc.2"` | Overrides the image tag whose default is the chart appVersion. |
 | installCRDs | bool | `true` | Whether or not to install Astarte CRDs. |
 | replicaCount | int | `1` | The number of Astarte Operator replicas in your cluster. |
 | resources | object | `{"limits":{"cpu":"100m","memory":"256Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | Resources to assign to each Astarte Operator instance. |

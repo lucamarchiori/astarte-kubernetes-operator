@@ -43,7 +43,7 @@ func (r *AstarteReconciler) handleFinalization(instance *v2alpha1.Astarte) (ctrl
 		// Remove astarteFinalizer. Once all finalizers have been
 		// removed, the object will be deleted.
 		instance.SetFinalizers(remove(instance.GetFinalizers(), astarteFinalizer))
-		if e := r.Client.Update(context.TODO(), instance); e != nil {
+		if e := r.Update(context.TODO(), instance); e != nil {
 			return ctrl.Result{}, e
 		}
 	}
@@ -56,7 +56,7 @@ func (r *AstarteReconciler) addFinalizer(cr *v2alpha1.Astarte) error {
 	cr.SetFinalizers(append(cr.GetFinalizers(), astarteFinalizer))
 
 	// Update CR
-	err := r.Client.Update(context.TODO(), cr)
+	err := r.Update(context.TODO(), cr)
 	if err != nil {
 		reqLogger.Error(err, "Failed to update Astarte with finalizer")
 		return err

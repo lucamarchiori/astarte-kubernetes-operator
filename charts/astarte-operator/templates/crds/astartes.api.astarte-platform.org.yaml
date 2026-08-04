@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ .Release.Name }}-serving-cert'
-    controller-gen.kubebuilder.io/version: v0.16.1
+    controller-gen.kubebuilder.io/version: v0.18.0
     helm.sh/resource-policy: keep
   name: astartes.api.astarte-platform.org
 spec:
@@ -16,7 +16,25 @@ spec:
     singular: astarte
   scope: Namespaced
   versions:
-    - name: v2alpha1
+    - additionalPrinterColumns:
+        - jsonPath: .status.operatorVersion
+          name: Operator Version
+          type: string
+        - jsonPath: .status.astarteVersion
+          name: Astarte Version
+          type: string
+        - jsonPath: .status.health
+          name: Status
+          type: string
+        - jsonPath: .status.baseAPIURL
+          name: Base API URL
+          priority: 1
+          type: string
+        - jsonPath: .status.brokerURL
+          name: Broker URL
+          priority: 1
+          type: string
+      name: v2alpha1
       schema:
         openAPIV3Schema:
           properties:
@@ -48,15 +66,15 @@ spec:
                         dataCenterReplication:
                           type: string
                         replicationFactor:
-                          default: 1
                           minimum: 1
                           type: integer
                         replicationStrategy:
-                          default: SimpleStrategy
                           enum:
                             - SimpleStrategy
                             - NetworkTopologyStrategy
                           type: string
+                      required:
+                        - replicationStrategy
                       type: object
                     connection:
                       properties:
@@ -126,6 +144,7 @@ spec:
                           type: object
                       type: object
                   required:
+                    - astarteSystemKeyspace
                     - connection
                   type: object
                 cfssl:
@@ -8133,6 +8152,44 @@ spec:
                 distributionChannel:
                   default: astarte
                   type: string
+                fdo:
+                  properties:
+                    enable:
+                      type: boolean
+                    rendezvousServer:
+                      properties:
+                        connection:
+                          properties:
+                            host:
+                              minLength: 1
+                              type: string
+                            port:
+                              format: int32
+                              maximum: 65535
+                              minimum: 1
+                              type: integer
+                            sslConfiguration:
+                              properties:
+                                customCASecret:
+                                  properties:
+                                    name:
+                                      default: ""
+                                      type: string
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                customSNI:
+                                  type: string
+                                enable:
+                                  type: boolean
+                                sni:
+                                  type: boolean
+                              type: object
+                          required:
+                            - host
+                            - port
+                          type: object
+                      type: object
+                  type: object
                 features:
                   properties:
                     astartePodPriorities:
@@ -8154,25 +8211,6 @@ spec:
                       type: object
                     autoscaling:
                       type: boolean
-                    fdo:
-                      properties:
-                        enable:
-                          type: boolean
-                        rendezvousServer:
-                          properties:
-                            host:
-                              minLength: 1
-                              type: string
-                            port:
-                              format: int32
-                              maximum: 65535
-                              minimum: 1
-                              type: integer
-                          required:
-                            - host
-                            - port
-                          type: object
-                      type: object
                     realmDeletion:
                       type: boolean
                   type: object
@@ -8321,6 +8359,54 @@ spec:
                   type: object
                 storageClassName:
                   type: string
+                vault:
+                  properties:
+                    baseNamespace:
+                      default: ""
+                      type: string
+                    connection:
+                      properties:
+                        connectionStringSecret:
+                          properties:
+                            key:
+                              minLength: 1
+                              type: string
+                            name:
+                              minLength: 1
+                              type: string
+                          required:
+                            - key
+                            - name
+                          type: object
+                        host:
+                          minLength: 1
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        sslConfiguration:
+                          properties:
+                            customCASecret:
+                              properties:
+                                name:
+                                  default: ""
+                                  type: string
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            customSNI:
+                              type: string
+                            enable:
+                              type: boolean
+                            sni:
+                              type: boolean
+                          type: object
+                      required:
+                        - host
+                        - port
+                      type: object
+                  type: object
                 vernemq:
                   properties:
                     additionalEnv:

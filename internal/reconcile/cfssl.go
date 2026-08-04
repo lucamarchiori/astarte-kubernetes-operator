@@ -184,22 +184,20 @@ func getCFSSLPodSpec(deploymentName, secretName string, cr *apiv2alpha1.Astarte)
 		resources = *cr.Spec.CFSSL.Resources
 	}
 
-	volumeMounts := []v1.VolumeMount{
-		{
-			Name:      "config",
-			MountPath: "/etc/cfssl",
-		},
-	}
-	volumes := []v1.Volume{
-		{
-			Name: "config",
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{Name: deploymentName + "-config"},
-				},
+	volumeMounts := make([]v1.VolumeMount, 0, 2)
+	volumeMounts = append(volumeMounts, v1.VolumeMount{
+		Name:      "config",
+		MountPath: "/etc/cfssl",
+	})
+	volumes := make([]v1.Volume, 0, 2)
+	volumes = append(volumes, v1.Volume{
+		Name: "config",
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{Name: deploymentName + "-config"},
 			},
 		},
-	}
+	})
 	env := []v1.EnvVar{}
 
 	volumeMounts = append(volumeMounts, v1.VolumeMount{

@@ -23,12 +23,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
 	apiv2alpha1 "github.com/astarte-platform/astarte-kubernetes-operator/api/api/v2alpha1"
 
-	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
+	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
 )
 
 const (
@@ -43,6 +44,8 @@ const (
 	// test/samples/api_v2alpha1_astarte_1*.yaml files
 	astarteName      = "example-astarte"
 	astarteNamespace = "example-astarte-ns"
+
+	operatorNamespace = "astarte-kubernetes-operator-system"
 
 	// DefaultRetryInterval applied to all tests
 	DefaultRetryInterval time.Duration = time.Second * 10
@@ -60,10 +63,69 @@ const (
 	scyllaOperatorVersion = "v1.17.1"
 	scyllaOperatorURL     = "https://raw.githubusercontent.com/scylladb/scylla-operator/%s/deploy/operator.yaml"
 	scyllaNamespace       = "scylla"
+
+	rendezvousServerNamespace = "rendezvous-server"
+
+	openbaoVersion = "0.4.0"
 )
 
 func warnError(err error) {
 	_, _ = fmt.Fprintf(GinkgoWriter, "warning: %v\n", err)
+}
+
+func verifyControllerPodRunning() error {
+	cmd := exec.Command("kubectl", "get",
+		"pods", "-l", "control-plane=controller-manager",
+		"-o", "jsonpath={.items[?(@.status.phase=='Running')].metadata.name}",
+		"-n", operatorNamespace,
+	)
+	output, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+	podNames := GetNonEmptyLines(string(output))
+	if len(podNames) != 1 {
+		return fmt.Errorf("expect 1 running controller pod, got %d", len(podNames))
+	}
+	if !strings.Contains(podNames[0], "controller-manager") {
+		return fmt.Errorf("unexpected pod name: %s", podNames[0])
+	}
+	return nil
+}
+
+func verifyControllerPodNotRunning() error {
+	cmd := exec.Command("kubectl", "get",
+		"pods", "-l", "control-plane=controller-manager",
+		"-o", "go-template={{ range .items }}"+
+			"{{ if not .metadata.deletionTimestamp }}"+
+			"{{ .metadata.name }}"+
+			"{{\"\\n\"}}{{ end }}{{ end }}",
+		"-n", operatorNamespace,
+	)
+	output, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+	podNames := GetNonEmptyLines(string(output))
+	if len(podNames) != 0 {
+		return fmt.Errorf("expect 0 controller pods running, but got %d", len(podNames))
+	}
+	return nil
+}
+
+func DeployRendezvousServer() error {
+	if err := EnsureNamespaceExists(rendezvousServerNamespace); err != nil {
+		return fmt.Errorf("failed to ensure namespace %s exists: %w", rendezvousServerNamespace, err)
+	}
+
+	projectDir, err := GetProjectDir()
+	if err != nil {
+		return fmt.Errorf("failed to get project directory: %w", err)
+	}
+	cmd := exec.Command("kubectl", "apply", "-n", rendezvousServerNamespace,
+		"-f", filepath.Join(projectDir, "test/manifests/dependencies/rendezvous-server"))
+	_, err = Run(cmd)
+	return err
 }
 
 // InstallPrometheusOperator installs the prometheus Operator to be used to export the enabled metrics.
@@ -78,11 +140,6 @@ func InstallPrometheusOperator() error {
 func Run(cmd *exec.Cmd) ([]byte, error) {
 	dir, _ := GetProjectDir()
 	cmd.Dir = dir
-
-	if err := os.Chdir(cmd.Dir); err != nil {
-		_, _ = fmt.Fprintf(GinkgoWriter, "chdir dir: %s\n", err)
-	}
-
 	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	command := strings.Join(cmd.Args, " ")
 	_, _ = fmt.Fprintf(GinkgoWriter, "running: %s\n", command)
@@ -163,7 +220,7 @@ func GetProjectDir() (string, error) {
 	if err != nil {
 		return wd, err
 	}
-	wd = strings.Replace(wd, "/test/e2e", "", -1)
+	wd = strings.ReplaceAll(wd, "/test/e2e", "")
 	return wd, nil
 }
 
@@ -195,7 +252,9 @@ func EnsureAstarteHealthGreen() error {
 
 func EnsureAstarteWithInfoDump() error {
 	err := EnsureAstarteHealthGreen()
-	DumpAstarteDebuggingInfo()
+	if err != nil {
+		DumpAstarteDebuggingInfo()
+	}
 	return err
 }
 
@@ -211,6 +270,15 @@ func DeleteRabbitMQConnectionSecret() error {
 func DeleteScyllaConnectionSecret() error {
 	cmd := exec.Command("kubectl", "delete", "secret",
 		"scylladb-connection-secret",
+		"-n", astarteNamespace,
+	)
+	_, err := Run(cmd)
+	return err
+}
+
+func DeleteVaultConnectionSecret() error {
+	cmd := exec.Command("kubectl", "delete", "secret",
+		"vault-connection-string",
 		"-n", astarteNamespace,
 	)
 	_, err := Run(cmd)
@@ -386,6 +454,40 @@ func DeployRabbitMQCluster() error {
 
 	if _, err := Run(cmd); err != nil {
 		return fmt.Errorf("failed to wait for RabbitMQ cluster pods to be ready: %w", err)
+	}
+
+	return nil
+}
+
+func DeployOpenBao() error {
+	cmd := exec.Command("helm", "repo", "add", "openbao", "https://openbao.github.io/openbao-helm")
+	if _, err := Run(cmd); err != nil {
+		return fmt.Errorf("failed to add OpenBao Helm repository: %w", err)
+	}
+
+	openbaoNamespace := "openbao"
+
+	cmd = exec.Command("helm", "install", "openbao", "openbao/openbao",
+		"--namespace", openbaoNamespace, "--create-namespace",
+		"--version", openbaoVersion,
+		"--set", "server.dev.enabled=true",
+	)
+	if _, err := Run(cmd); err != nil {
+		return fmt.Errorf("failed to install OpenBao: %w", err)
+	}
+
+	secretData := map[string]string{
+		"connection-string": "root",
+	}
+
+	if err := CreateSecret("vault-connection-string", astarteNamespace, secretData); err != nil {
+		return fmt.Errorf("failed to create Vault connection secret: %w", err)
+	}
+
+	cmd = exec.Command("kubectl", "wait", "--for=condition=Ready", "pod",
+		"-l", "app.kubernetes.io/instance=openbao", "-n", openbaoNamespace, "--timeout", "5m")
+	if _, err := Run(cmd); err != nil {
+		return fmt.Errorf("failed to wait for OpenBao pod to be ready: %w", err)
 	}
 
 	return nil

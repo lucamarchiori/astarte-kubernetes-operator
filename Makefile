@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 25.5.0-dev
+VERSION ?= 26.7.0-rc.2
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -48,7 +48,7 @@ endif
 
 # Set the Operator SDK version to use. By default, what is installed on the system is used.
 # This is useful for CI or a project to utilize a specific version of the operator-sdk toolkit.
-OPERATOR_SDK_VERSION ?= v1.40.0
+OPERATOR_SDK_VERSION ?= v1.42.3
 # Image URL to use all building/pushing image targets
 IMG ?= astarte/astarte-kubernetes-operator:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -103,8 +103,22 @@ manifests: controller-gen yq kustomize ## Generate WebhookConfiguration, Cluster
 	@sed -i '$$a{{- end }}' charts/astarte-operator/templates/crds/* # append to the end of each and every crd
 	$(KUSTOMIZE) build config/helm-rbac > charts/astarte-operator/templates/rbac.yaml
 	$(KUSTOMIZE) build config/helm-manager > charts/astarte-operator/templates/manager.yaml
-	# and inject helm templates for setting the number of replicas for the deployment
-	@sed -i 's/replicas:.*/replicas: {{ .Values.replicaCount }}/g' charts/astarte-operator/templates/manager.yaml
+	# and inject helm templates for setting values
+	@sed -i "s/replicas:.*/replicas: {{ .Values.replicaCount }}/g" charts/astarte-operator/templates/manager.yaml
+	@sed -i "s/image:.*/image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'/g" charts/astarte-operator/templates/manager.yaml
+	# inject metrics helm templates
+	@sed -i 's/--metrics-bind-address=:8443/--metrics-bind-address={{ .Values.metrics.enable | ternary (printf ":%v" .Values.metrics.port) "0" }}/g' charts/astarte-operator/templates/manager.yaml
+	@sed -i 's/--metrics-secure=true/--metrics-secure={{ .Values.metrics.secure }}/g' charts/astarte-operator/templates/manager.yaml
+	@sed -i '/- containerPort: 8443/,/protocol: TCP/{/- containerPort: 8443/ s/.*/        {{- if .Values.metrics.enable }}\n&/;/protocol: TCP/ s/.*/&\n        {{- end }}/}' charts/astarte-operator/templates/manager.yaml
+	@sed -i 's/containerPort: 8443/containerPort: {{ .Values.metrics.port }}/g' charts/astarte-operator/templates/manager.yaml
+	# Wrap metrics service in conditional
+	@sed -i '1 i\{{- if .Values.metrics.enable }}' charts/astarte-operator/templates/manager.yaml
+	@sed -i '0,/^---$$/{s/^---$$/{{- end }}\n---/}' charts/astarte-operator/templates/manager.yaml
+	# Inject helm templates for service port values
+	@sed -i 's/    port: 8443/    port: {{ .Values.metrics.port }}/' charts/astarte-operator/templates/manager.yaml
+	@sed -i 's/    targetPort: 8443/    targetPort: {{ .Values.metrics.port }}/' charts/astarte-operator/templates/manager.yaml
+	# Inject helm template for dynamic port name based on metrics.secure
+	@sed -i 's/  - name: https/  - name: {{ .Values.metrics.secure | ternary "https" "http" }}/' charts/astarte-operator/templates/manager.yaml
 	$(KUSTOMIZE) build config/helm-webhook > charts/astarte-operator/templates/webhook.yaml
 
 .PHONY: generate
@@ -131,13 +145,33 @@ lint: golangci-lint ## Run golangci-lint linter
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 	$(GOLANGCI_LINT) run --fix
 
+# TODO(user): To use a different vendor for e2e tests, modify the setup under 'tests/e2e'.
+# The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
+# CertManager is installed by default; skip with:
+# - CERT_MANAGER_INSTALL_SKIP=true
+KIND_CLUSTER ?= astarte-operator-test-e2e
+
+.PHONY: setup-test-e2e
+setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
+	@command -v $(KIND) >/dev/null 2>&1 || { \
+		echo "Kind is not installed. Please install Kind manually."; \
+		exit 1; \
+	}
+	@case "$$($(KIND) get clusters)" in \
+		*"$(KIND_CLUSTER)"*) \
+			echo "Kind cluster '$(KIND_CLUSTER)' already exists. Skipping creation." ;; \
+		*) \
+			echo "Creating Kind cluster '$(KIND_CLUSTER)'..."; \
+			$(KIND) create cluster --name $(KIND_CLUSTER) ;; \
+	esac
+
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 # The default timeout is 10m, this can cause problems in the E2E test suite where we have timeouts for each step.
 # If you want to change timeouts of E2E please change it in the E2E test. The timeout here is a upper-bound protection against test without explicit timeouts that could take hours.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
 test-e2e:
 	go test ./test/e2e/ -v -ginkgo.v -timeout 1h
- 
+
 
 ##@ Build
 
@@ -233,12 +267,12 @@ YQ ?= $(LOCALBIN)/yq
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.4.3
-CONTROLLER_TOOLS_VERSION ?= v0.16.1
+CONTROLLER_TOOLS_VERSION ?= v0.18.0
 # Conversion-gen version should match the older k8s version supported by the operator.
 # Note: the major lags behind by one (see https://github.com/kubernetes/code-generator#where-does-it-come-from).
 CONVERSION_GEN_VERSION = v0.27.16
 ENVTEST_VERSION := $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
-GOLANGCI_LINT_VERSION ?= v1.59.1
+GOLANGCI_LINT_VERSION ?= v2.1.0
 CRD_REF_DOCS_VERSION = v0.2.0
 HELM_DOCS_VERSION = v1.7.0
 YQ_VERSION = v4.30.8
@@ -256,7 +290,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: setup-envtest
 setup-envtest:
 	@$(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path || { echo "Error setting up envtest"; exit 1; }
-	
+
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
 $(ENVTEST): $(LOCALBIN)
@@ -275,7 +309,7 @@ $(YQ): $(LOCALBIN)
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
-	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
 .PHONY: lint-config
 lint-config: golangci-lint ## Verify golangci-lint linter configuration

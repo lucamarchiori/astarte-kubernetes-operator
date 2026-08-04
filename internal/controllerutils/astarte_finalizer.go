@@ -49,9 +49,6 @@ func FinalizeAstarte(c client.Client, name, namespace string, reqLogger logr.Log
 	// different measures.
 	erasePVCPrefixes := []string{
 		name + "-vernemq-data",
-		name + "-rabbitmq-data",
-		name + "-cfssl-data",
-		name + "-cassandra-data",
 	}
 
 	pvcs := &v1.PersistentVolumeClaimList{}

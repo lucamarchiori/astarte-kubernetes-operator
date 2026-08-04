@@ -201,8 +201,120 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: astarte-kubernetes-operator
+  name: '{{ .Release.Name }}-ingress-astartefdoingress-admin-role'
+rules:
+- apiGroups:
+  - ingress.astarte-platform.org
+  resources:
+  - astartefdoingresses
+  verbs:
+  - '*'
+- apiGroups:
+  - ingress.astarte-platform.org
+  resources:
+  - astartefdoingresses/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: astarte-kubernetes-operator
+  name: '{{ .Release.Name }}-ingress-astartefdoingress-editor-role'
+rules:
+- apiGroups:
+  - ingress.astarte-platform.org
+  resources:
+  - astartefdoingresses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ingress.astarte-platform.org
+  resources:
+  - astartefdoingresses/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: astarte-kubernetes-operator
+  name: '{{ .Release.Name }}-ingress-astartefdoingress-viewer-role'
+rules:
+- apiGroups:
+  - ingress.astarte-platform.org
+  resources:
+  - astartefdoingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ingress.astarte-platform.org
+  resources:
+  - astartefdoingresses/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
   name: '{{ .Release.Name }}-manager-role'
 rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - endpoints
+  - persistentvolumeclaims
+  - secrets
+  - serviceaccounts
+  - services
+  - services/finalizers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - api.astarte-platform.org
   resources:
@@ -262,47 +374,6 @@ rules:
   - list
   - watch
 - apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - endpoints
-  - persistentvolumeclaims
-  - secrets
-  - serviceaccounts
-  - services
-  - services/finalizers
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - get
-  - list
-  - patch
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - create
-  - delete
-  - deletecollection
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
   - flow.astarte-platform.org
   resources:
   - flows
@@ -326,6 +397,7 @@ rules:
   - ingress.astarte-platform.org
   resources:
   - astartedefaultingresses
+  - astartefdoingresses
   verbs:
   - create
   - delete
@@ -338,12 +410,14 @@ rules:
   - ingress.astarte-platform.org
   resources:
   - astartedefaultingresses/finalizers
+  - astartefdoingresses/finalizers
   verbs:
   - update
 - apiGroups:
   - ingress.astarte-platform.org
   resources:
   - astartedefaultingresses/status
+  - astartefdoingresses/status
   verbs:
   - get
   - patch

@@ -59,12 +59,12 @@ func (r *ReconcileHelper) CheckAndPerformUpgrade(reqLogger logr.Logger, instance
 	// when the cluster was healthy. As such, proceed if one among the computed health and the reported health are green.
 	computedClusterHealth := r.ComputeClusterHealth(reqLogger, instance)
 	if computedClusterHealth != apiv2alpha1.AstarteClusterHealthGreen && instance.Status.Health != apiv2alpha1.AstarteClusterHealthGreen {
-		reqLogger.Error(fmt.Errorf("Astarte Upgrade requested, but the cluster isn't reporting stable Health. Refusing to upgrade"),
+		reqLogger.Error(fmt.Errorf("astarte upgrade requested, but the cluster isn't reporting stable health. Refusing to upgrade"),
 			"Cluster health is unstable, refusing to upgrade. Please revert to the previous version and wait for the cluster to settle.",
-			"Reported Health", instance.Status.Health, "Computed Health", computedClusterHealth)
+			"Reported health", instance.Status.Health, "Computed health", computedClusterHealth)
 		r.Recorder.Event(instance, "Warning", apiv2alpha1.AstarteResourceEventCriticalError.String(),
-			fmt.Sprintf("Cluster health is %s, refusing to upgrade. Please revert to the previous version and wait for the cluster to settle", computedClusterHealth))
-		return ctrl.Result{Requeue: false}, fmt.Errorf("Astarte Upgrade requested, but the cluster isn't reporting stable Health. Refusing to upgrade")
+			fmt.Sprintf("cluster health is %s, refusing to upgrade. Please revert to the previous version and wait for the cluster to settle", computedClusterHealth))
+		return ctrl.Result{Requeue: false}, fmt.Errorf("astarte upgrade requested, but the cluster isn't reporting stable health. Refusing to upgrade")
 	}
 	// We need to check for upgrades.
 	versionString := instance.Status.AstarteVersion
@@ -117,9 +117,10 @@ func (r *ReconcileHelper) ComputeClusterHealth(reqLogger logr.Logger, instance *
 		nonReadyDeployments++
 	}
 
-	if nonReadyDeployments == 0 {
+	switch nonReadyDeployments {
+	case 0:
 		return apiv2alpha1.AstarteClusterHealthGreen
-	} else if nonReadyDeployments == 1 {
+	case 1:
 		return apiv2alpha1.AstarteClusterHealthYellow
 	}
 	return apiv2alpha1.AstarteClusterHealthRed
@@ -174,9 +175,9 @@ func (r *ReconcileHelper) EnsureStatusCoherency(reqLogger logr.Logger, instance 
 		if len(hkImageTokens) != 2 {
 			// Reconcile every minute if we're here
 			r.Recorder.Eventf(instance, "Warning", apiv2alpha1.AstarteResourceEventCriticalError.String(),
-				"Could not parse Astarte version from Housekeeping Image tag %s. Please fix your resource definition", hkImage)
+				"could not parse Astarte version from Housekeeping Image tag %s. Please fix your resource definition", hkImage)
 			return ctrl.Result{RequeueAfter: time.Minute},
-				fmt.Errorf("Could not parse Astarte version from Housekeeping Image tag %s. Refusing to proceed", hkImage)
+				fmt.Errorf("could not parse Astarte version from Housekeeping Image tag %s. Refusing to proceed", hkImage)
 		}
 
 		// Update the status

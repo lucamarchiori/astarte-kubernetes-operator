@@ -89,6 +89,12 @@ func EnsureVerneMQ(cr *apiv2alpha1.Astarte, c client.Client, scheme *runtime.Sch
 				Protocol:   v1.ProtocolTCP,
 			},
 			{
+				Name:       "mqtt-ssl",
+				Port:       8883,
+				TargetPort: intstr.FromString("mqtt-ssl"),
+				Protocol:   v1.ProtocolTCP,
+			},
+			{
 				Name:       "mqtt-reverse",
 				Port:       1885,
 				TargetPort: intstr.FromString("mqtt-reverse"),
@@ -148,7 +154,7 @@ func EnsureVerneMQ(cr *apiv2alpha1.Astarte, c client.Client, scheme *runtime.Sch
 		}
 
 		// Assign the Spec.
-		vmqStatefulSet.ObjectMeta.Labels = map[string]string{"component": "astarte"}
+		vmqStatefulSet.Labels = map[string]string{"component": "astarte"}
 		vmqStatefulSet.Spec = statefulSetSpec
 		vmqStatefulSet.Spec.Replicas = getReplicaCountForResource(&cr.Spec.VerneMQ.AstarteGenericClusteredResource, cr, c, log)
 
@@ -254,7 +260,7 @@ func getVerneMQEnvVars(statefulSetName string, cr *apiv2alpha1.Astarte) []v1.Env
 
 		envVars = append(envVars, v1.EnvVar{
 			Name:  "CFSSL_URL",
-			Value: fmt.Sprintf("http://%s-cfssl.%s.svc.cluster.local", cr.Name, cr.Namespace),
+			Value: getCFSSLURL(cr),
 		})
 	}
 
@@ -371,7 +377,7 @@ func getVerneMQPodSpec(statefulSetName, dataVolumeName string, cr *apiv2alpha1.A
 	// do we want priorities?
 	if cr.Spec.Features.AstartePodPriorities.IsEnabled() {
 		// is a priorityClass specified in the Astarte CR?
-		switch cr.Spec.VerneMQ.AstarteGenericClusteredResource.PriorityClass {
+		switch cr.Spec.VerneMQ.PriorityClass {
 		case highPriority:
 			ps.PriorityClassName = AstarteHighPriorityName
 		case midPriority:

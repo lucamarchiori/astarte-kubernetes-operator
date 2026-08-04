@@ -5,6 +5,47 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - endpoints
+  - persistentvolumeclaims
+  - secrets
+  - serviceaccounts
+  - services
+  - services/finalizers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - api.astarte-platform.org
   resources:
   - astartes
@@ -63,47 +104,6 @@ rules:
   - list
   - watch
 - apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - endpoints
-  - persistentvolumeclaims
-  - secrets
-  - serviceaccounts
-  - services
-  - services/finalizers
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - get
-  - list
-  - patch
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - create
-  - delete
-  - deletecollection
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
   - flow.astarte-platform.org
   resources:
   - flows
@@ -127,6 +127,7 @@ rules:
   - ingress.astarte-platform.org
   resources:
   - astartedefaultingresses
+  - astartefdoingresses
   verbs:
   - create
   - delete
@@ -139,12 +140,14 @@ rules:
   - ingress.astarte-platform.org
   resources:
   - astartedefaultingresses/finalizers
+  - astartefdoingresses/finalizers
   verbs:
   - update
 - apiGroups:
   - ingress.astarte-platform.org
   resources:
   - astartedefaultingresses/status
+  - astartefdoingresses/status
   verbs:
   - get
   - patch

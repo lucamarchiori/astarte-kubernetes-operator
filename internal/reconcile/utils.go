@@ -340,12 +340,12 @@ func computePersistentVolumeClaim(defaultName string, defaultSize *resource.Quan
 	}
 }
 
-// appendAstarteFDOEnvVars returns the environment variables needed to enable FDO support in Pairing
-func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
-	if cr.Spec.Features.FDO == nil || !cr.Spec.Features.FDO.Enable {
-		return append(ret, v1.EnvVar{Name: "PAIRING_ENABLE_FDO", Value: "false"})
+func appendAstarteRendezvousServerEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
+	if cr.Spec.FDO == nil || cr.Spec.FDO.RendezvousServer == nil {
+		return ret
 	}
 
+	// Here we are sure that RendezvousServer is set
 	scheme := "https"
 	port := 443
 	if !pointy.BoolValue(cr.Spec.API.SSL, true) {
@@ -353,16 +353,12 @@ func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvV
 		port = 80
 	}
 
-	rsPort := pointy.Int32Value(cr.Spec.Features.FDO.RendezvousServer.Port, 8041)
+	rsPort := pointy.Int32Value(cr.Spec.FDO.RendezvousServer.Connection.Port, 8041)
 
 	ret = append(ret,
 		v1.EnvVar{
-			Name:  "PAIRING_ENABLE_FDO",
-			Value: "true",
-		},
-		v1.EnvVar{
 			Name:  "PAIRING_FDO_RENDEZVOUS_URL",
-			Value: fmt.Sprintf("%s:%d", cr.Spec.Features.FDO.RendezvousServer.Host, rsPort),
+			Value: fmt.Sprintf("%s:%d", cr.Spec.FDO.RendezvousServer.Connection.Host, rsPort),
 		},
 		v1.EnvVar{
 			Name:  "ASTARTE_BASE_URL_DOMAIN",
@@ -377,6 +373,138 @@ func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvV
 			Value: scheme,
 		},
 	)
+
+	// Rendezvous SSL configuration
+	if cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.Enable {
+		ret = append(ret, v1.EnvVar{
+			Name:  "PAIRING_FDO_RENDEZVOUS_SSL_ENABLED",
+			Value: "true",
+		})
+
+		// CA configuration
+		if cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+			// getAstarteCommonVolumes will mount the volume for us, if we're here. So trust the rest of our code.
+			ret = append(ret, v1.EnvVar{
+				Name:  "PAIRING_FDO_RENDEZVOUS_SSL_CA_FILE",
+				Value: "/rendezvous-ssl/ca.crt",
+			})
+		}
+
+		// SNI configuration
+		switch {
+		case cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomSNI != "":
+			ret = append(ret, v1.EnvVar{
+				Name:  "PAIRING_FDO_RENDEZVOUS_SSL_CUSTOM_SNI",
+				Value: cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomSNI,
+			})
+		case !pointy.BoolValue(cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.SNI, true):
+			ret = append(ret, v1.EnvVar{
+				Name:  "PAIRING_FDO_RENDEZVOUS_SSL_DISABLE_SNI",
+				Value: "true",
+			})
+		}
+	}
+
+	return ret
+
+}
+
+// appendAstarteFDOEnvVars returns the environment variables needed to enable FDO support in Pairing
+func appendAstarteFDOEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
+	fdoEnabled := cr.Spec.FDO != nil && cr.Spec.FDO.Enable
+
+	// In Astarte >= 1.4, FDO is mandatory and cannot be disabled.
+	// The webhook prevents reaching this state, but CRs created before the webhook was
+	// active may still have FDO disabled on a version that requires it. Here we force it.
+	if !fdoEnabled {
+		if checker, err := version.NewChecker(cr.Spec.Version); err == nil && !checker.Supports(version.OptionalFDO) {
+			log.Info("FDO is disabled but Astarte version >= 1.4 requires it. Forcing FDO enable.",
+				"version", cr.Spec.Version)
+			fdoEnabled = true
+		}
+	}
+
+	ret = append(ret, v1.EnvVar{Name: "PAIRING_ENABLE_FDO", Value: strconv.FormatBool(fdoEnabled)})
+
+	if fdoEnabled {
+		ret = appendAstarteRendezvousServerEnvVars(ret, cr)
+	}
+
+	return ret
+}
+
+// appendAstarteVaultEnvVars returns the environment variables needed to enable Vault support
+func appendAstarteVaultEnvVars(ret []v1.EnvVar, cr *apiv2alpha1.Astarte) []v1.EnvVar {
+	if cr.Spec.Vault == nil {
+		return ret
+	}
+
+	vPort := pointy.Int32Value(cr.Spec.Vault.Connection.Port, 8200)
+
+	ret = append(ret,
+		v1.EnvVar{
+			Name:  "ASTARTE_VAULT_URL",
+			Value: fmt.Sprintf("%s:%d", cr.Spec.Vault.Connection.Host, vPort),
+		},
+	)
+
+	// Vault authentication configuration
+	if cr.Spec.Vault.Connection.ConnectionStringSecret != nil {
+		ret = append(ret,
+			v1.EnvVar{
+				Name:  "ASTARTE_VAULT_AUTHENTICATION_MECHANISM",
+				Value: "token",
+			},
+		)
+
+		ret = append(ret,
+			v1.EnvVar{
+				Name: "ASTARTE_VAULT_TOKEN",
+				ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{Name: cr.Spec.Vault.Connection.ConnectionStringSecret.Name},
+					Key:                  cr.Spec.Vault.Connection.ConnectionStringSecret.Key,
+				}},
+			},
+		)
+	}
+
+	// Base vault namespace prefix
+	if cr.Spec.Vault.BaseNamespace != "" {
+		ret = append(ret, v1.EnvVar{
+			Name:  "ASTARTE_VAULT_BASE_NAMESPACE",
+			Value: cr.Spec.Vault.BaseNamespace,
+		})
+	}
+
+	// Vault SSL configuration
+	if cr.Spec.Vault.Connection.SSLConfiguration.Enable {
+		ret = append(ret, v1.EnvVar{
+			Name:  "ASTARTE_VAULT_SSL_ENABLED",
+			Value: "true",
+		})
+
+		// CA configuration
+		if cr.Spec.Vault.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+			ret = append(ret, v1.EnvVar{
+				Name:  "ASTARTE_VAULT_SSL_CA_FILE",
+				Value: "/vault-ssl/ca.crt",
+			})
+		}
+
+		// SNI configuration
+		switch {
+		case cr.Spec.Vault.Connection.SSLConfiguration.CustomSNI != "":
+			ret = append(ret, v1.EnvVar{
+				Name:  "ASTARTE_VAULT_SSL_CUSTOM_SNI",
+				Value: cr.Spec.Vault.Connection.SSLConfiguration.CustomSNI,
+			})
+		case !pointy.BoolValue(cr.Spec.Vault.Connection.SSLConfiguration.SNI, true):
+			ret = append(ret, v1.EnvVar{
+				Name:  "ASTARTE_VAULT_SSL_DISABLE_SNI",
+				Value: "true",
+			})
+		}
+	}
 
 	return ret
 }
@@ -763,6 +891,32 @@ func getAstarteCommonVolumes(cr *apiv2alpha1.Astarte) []v1.Volume {
 		})
 	}
 
+	// If the FDO rendezvous connection is not initialized, do not attempt to mount the secret.
+	if cr.Spec.FDO != nil &&
+		cr.Spec.FDO.RendezvousServer != nil &&
+		cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+		// Mount the secret!
+		ret = append(ret, v1.Volume{
+			Name: "rendezvous-ssl-ca",
+			VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+				SecretName: cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name,
+				Items:      []v1.KeyToPath{{Key: "ca.crt", Path: "ca.crt"}},
+			}},
+		})
+	}
+
+	if cr.Spec.Vault != nil &&
+		cr.Spec.Vault.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+		// Mount the secret!
+		ret = append(ret, v1.Volume{
+			Name: "vault-ssl-ca",
+			VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+				SecretName: cr.Spec.Vault.Connection.SSLConfiguration.CustomCASecret.Name,
+				Items:      []v1.KeyToPath{{Key: "ca.crt", Path: "ca.crt"}},
+			}},
+		})
+	}
+
 	return ret
 }
 
@@ -793,34 +947,55 @@ func getAstarteCommonVolumeMounts(cr *apiv2alpha1.Astarte) []v1.VolumeMount {
 		})
 	}
 
+	if cr.Spec.FDO != nil &&
+		cr.Spec.FDO.RendezvousServer != nil &&
+		cr.Spec.FDO.RendezvousServer.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+		// Mount the secret!
+		ret = append(ret, v1.VolumeMount{
+			Name:      "rendezvous-ssl-ca",
+			MountPath: "/rendezvous-ssl",
+			ReadOnly:  true,
+		})
+	}
+
+	if cr.Spec.Vault != nil &&
+		cr.Spec.Vault.Connection.SSLConfiguration.CustomCASecret.Name != "" {
+		// Mount the secret!
+		ret = append(ret, v1.VolumeMount{
+			Name:      "vault-ssl-ca",
+			MountPath: "/vault-ssl",
+			ReadOnly:  true,
+		})
+	}
+
 	return ret
 }
 
-func getAffinityForClusteredResource(appLabel string, resource apiv2alpha1.AstarteGenericClusteredResource) *v1.Affinity {
-	affinity := resource.CustomAffinity
-	if affinity == nil && pointy.BoolValue(resource.AntiAffinity, true) {
+func getAffinityForClusteredResource(appLabel string, r apiv2alpha1.AstarteGenericClusteredResource) *v1.Affinity {
+	affinity := r.CustomAffinity
+	if affinity == nil && pointy.BoolValue(r.AntiAffinity, true) {
 		affinity = getStandardAntiAffinityForAppLabel(appLabel)
 	}
 	return affinity
 }
 
-func getAstarteImageForClusteredResource(defaultImageName string, resource apiv2alpha1.AstarteGenericClusteredResource, cr *apiv2alpha1.Astarte) string {
-	if resource.Image != "" {
-		return resource.Image
+func getAstarteImageForClusteredResource(defaultImageName string, r apiv2alpha1.AstarteGenericClusteredResource, cr *apiv2alpha1.Astarte) string {
+	if r.Image != "" {
+		return r.Image
 	}
 
-	return getAstarteImageFromChannel(defaultImageName, version.GetVersionForAstarteComponent(cr.Spec.Version, resource.Version), cr)
+	return getAstarteImageFromChannel(defaultImageName, version.GetVersionForAstarteComponent(cr.Spec.Version, r.Version), cr)
 }
 
-func getDeploymentStrategyForClusteredResource(cr *apiv2alpha1.Astarte, resource apiv2alpha1.AstarteGenericClusteredResource, component apiv2alpha1.AstarteComponent) appsv1.DeploymentStrategy {
+func getDeploymentStrategyForClusteredResource(cr *apiv2alpha1.Astarte, r apiv2alpha1.AstarteGenericClusteredResource, component apiv2alpha1.AstarteComponent) appsv1.DeploymentStrategy {
 	switch {
 	case component == apiv2alpha1.DataUpdaterPlant, component == apiv2alpha1.TriggerEngine,
 		component == apiv2alpha1.FlowComponent:
 		return appsv1.DeploymentStrategy{
 			Type: appsv1.RecreateDeploymentStrategyType,
 		}
-	case resource.DeploymentStrategy != nil:
-		return *resource.DeploymentStrategy
+	case r.DeploymentStrategy != nil:
+		return *r.DeploymentStrategy
 	case cr.Spec.DeploymentStrategy != nil:
 		return *cr.Spec.DeploymentStrategy
 	default:
@@ -855,7 +1030,7 @@ func createOrUpdateService(cr *apiv2alpha1.Astarte, c client.Client, serviceName
 			return e
 		}
 		// Always set everything to what we require.
-		service.ObjectMeta.Labels = labels
+		service.Labels = labels
 		service.Spec.Type = v1.ServiceTypeClusterIP
 		service.Spec.ClusterIP = noneClusterIP
 		service.Spec.Ports = []v1.ServicePort{
@@ -886,22 +1061,22 @@ func computePodLabels(r apiv2alpha1.PodLabelsGetter, labels map[string]string) m
 	return podLabels
 }
 
-func getReplicaCountForResource(resource *apiv2alpha1.AstarteGenericClusteredResource, cr *apiv2alpha1.Astarte, c client.Client, log logr.Logger) *int32 {
-	if cr.Spec.Features.Autoscaling && resource.Autoscale != nil {
-		if hpaStatus, err := getHPAStatusForResource(resource.Autoscale.Horizontal, cr, c, log); err == nil {
+func getReplicaCountForResource(r *apiv2alpha1.AstarteGenericClusteredResource, cr *apiv2alpha1.Astarte, c client.Client, log logr.Logger) *int32 {
+	if cr.Spec.Features.Autoscaling && r.Autoscale != nil {
+		if hpaStatus, err := getHPAStatusForResource(r.Autoscale.Horizontal, cr, c, log); err == nil {
 			// This is a special case to avoid a race condition with HPA, which can lead to the Operator
 			// and HPA fighting over replica count, causing service disruption. This can happen when
 			// the HPA isn't able to fetch metrics for the pods, and decides to scale down to 0.
 			// This is a known issue in HPA, and this is a workaround to avoid it.
 			if hpaStatus.DesiredReplicas == 0 {
-				log.Info("HPA is reporting 0 desired replicas. This is likely a transient state. Ignoring HPA and using the spec's replica count", "HPA.Name", resource.Autoscale.Horizontal)
-				return resource.Replicas
+				log.Info("HPA is reporting 0 desired replicas. This is likely a transient state. Ignoring HPA and using the spec's replica count", "HPA.Name", r.Autoscale.Horizontal)
+				return r.Replicas
 			}
 			log.Info("Getting replica count from HPA", "value", hpaStatus.DesiredReplicas)
 			return &hpaStatus.DesiredReplicas
 		}
 	}
-	return resource.Replicas
+	return r.Replicas
 }
 
 func getHPAStatusForResource(autoscalerName string, cr *apiv2alpha1.Astarte, c client.Client, log logr.Logger) (autoscalingv2.HorizontalPodAutoscalerStatus, error) {
@@ -915,7 +1090,7 @@ func getHPAStatusForResource(autoscalerName string, cr *apiv2alpha1.Astarte, c c
 
 // This stuff is useful for other components which need to interact with Cassandra
 func getCassandraNodes(cr *apiv2alpha1.Astarte) string {
-	nodes := []string{}
+	nodes := make([]string, 0, len(cr.Spec.Cassandra.Connection.Nodes))
 	for _, node := range cr.Spec.Cassandra.Connection.Nodes {
 		nodes = append(nodes, fmt.Sprintf("%s:%d", node.Host, *node.Port))
 	}
@@ -936,7 +1111,7 @@ func appendAstarteKeyspaceEnvVars(cr *apiv2alpha1.Astarte) []v1.EnvVar {
 	if ask.ReplicationStrategy == "SimpleStrategy" {
 		ret = append(ret, v1.EnvVar{
 			Name:  "HOUSEKEEPING_ASTARTE_KEYSPACE_REPLICATION_FACTOR",
-			Value: strconv.Itoa(ask.ReplicationFactor),
+			Value: strconv.Itoa(pointy.IntValue(ask.ReplicationFactor, 1)),
 		})
 		return ret
 	}

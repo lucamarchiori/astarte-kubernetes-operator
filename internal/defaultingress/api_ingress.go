@@ -178,7 +178,7 @@ func getHAProxyAPIIngressRules(cr *ingressv2alpha1.AstarteDefaultIngress, parent
 		return ingressRules
 	}
 
-	var dashboardPaths []networkingv1.HTTPIngressPath
+	dashboardPaths := make([]networkingv1.HTTPIngressPath, 0, 1)
 	dashboard := apiv2alpha1.Dashboard
 
 	dashboardPaths = append(dashboardPaths, networkingv1.HTTPIngressPath{

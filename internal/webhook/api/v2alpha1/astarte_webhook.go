@@ -27,8 +27,10 @@ import (
 	"strings"
 
 	apiv2alpha1 "github.com/astarte-platform/astarte-kubernetes-operator/api/api/v2alpha1"
+	"github.com/astarte-platform/astarte-kubernetes-operator/internal/version"
 	"go.openly.dev/pointy"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -101,7 +103,32 @@ func (d *AstarteCustomDefaulter) Default(_ context.Context, obj runtime.Object) 
 	}
 
 	astartelog.Info("Defaulting for Astarte", "name", astarte.GetName())
+
+	defaultFDO(astarte)
+
 	return nil
+}
+
+// defaultFDO enables FDO by default on Astarte versions >= 1.4, where FDO is mandatory and
+// cannot be disabled. It only applies when spec.fdo is entirely unset (nil); an explicit
+// spec.fdo.enable=false is left untouched and will be caught by the validating webhook.
+func defaultFDO(r *apiv2alpha1.Astarte) {
+	if r.Spec.FDO != nil {
+		return
+	}
+
+	checker, err := version.NewChecker(r.Spec.Version)
+	if err != nil {
+		return
+	}
+
+	if !checker.Supports(version.OptionalFDO) {
+		astartelog.Info("FDO is not optional for this Astarte version. Defaulting FDO to enabled.",
+			"name", r.GetName(), "version", r.Spec.Version)
+		r.Spec.FDO = &apiv2alpha1.AstarteFDOSpec{
+			Enable: true,
+		}
+	}
 }
 
 /*
@@ -147,7 +174,7 @@ func (v *AstarteCustomValidator) ValidateCreate(_ context.Context, obj runtime.O
 		return nil, errors.New("expected a Astarte resource")
 	}
 
-	astartelog.Info("Validation for Astarte upon creation", "name", r.GetName())
+	astartelog.Info("validation for Astarte upon creation", "name", r.GetName())
 
 	allErrs := field.ErrorList{}
 
@@ -220,7 +247,7 @@ func (v *AstarteCustomValidator) ValidateDelete(_ context.Context, obj runtime.O
 		return nil, errors.New("expected a Astarte resource")
 	}
 
-	astartelog.Info("Validation for Astarte upon deletion", "name", r.GetName())
+	astartelog.Info("validation for Astarte upon deletion", "name", r.GetName())
 
 	return nil, nil
 }
@@ -248,7 +275,70 @@ func validateAstarte(r *apiv2alpha1.Astarte) field.ErrorList {
 		allErrs = append(allErrs, err)
 	}
 
+	if err := validateFDOConfiguration(r); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
+	if err := validateVaultConfiguration(r); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
 	return allErrs
+}
+
+func validateFDOConfiguration(r *apiv2alpha1.Astarte) *field.Error {
+	checker, err := version.NewChecker(r.Spec.Version)
+	if err != nil {
+		return nil
+	}
+
+	fdoOptional := checker.Supports(version.OptionalFDO)
+
+	if !fdoOptional && r.Spec.FDO != nil && !r.Spec.FDO.Enable {
+		fldPath := field.NewPath("spec").Child("fdo").Child("enable")
+		err := errors.New("FDO must be enabled for Astarte version 1.4.0 and above")
+		astartelog.Info("FDO validation rejected: explicitly disabled on Astarte >= 1.4",
+			"name", r.GetName(), "version", r.Spec.Version)
+		return field.Invalid(fldPath, r.Spec.FDO.Enable, err.Error())
+	}
+
+	if r.Spec.FDO != nil && r.Spec.FDO.Enable && r.Spec.FDO.RendezvousServer == nil {
+		fldPath := field.NewPath("spec").Child("fdo").Child("rendezvousServer")
+		var err error
+		if fdoOptional {
+			err = errors.New("must be set when fdo.enable is true")
+		} else {
+			err = errors.New("must be set for Astarte version 1.4.0 and above (FDO is always enabled)")
+		}
+		astartelog.Info(err.Error())
+		return field.Required(fldPath, err.Error())
+	}
+
+	return nil
+}
+
+func validateVaultConfiguration(r *apiv2alpha1.Astarte) *field.Error {
+	astarteVersionCheck, err := version.NewChecker(r.Spec.Version)
+	if err != nil {
+		fldPath := field.NewPath("spec").Child("version")
+		return field.Invalid(fldPath, r.Spec.Version, "must be a valid semantic version")
+	}
+
+	supportsVault := astarteVersionCheck.Supports(version.Vault)
+
+	if r.Spec.Vault == nil && supportsVault {
+		fldPath := field.NewPath("spec").Child("vault")
+		err := errors.New("vault configuration is required for Astarte version 1.4.0 and above")
+		return field.Required(fldPath, err.Error())
+	}
+
+	if r.Spec.Vault != nil && !supportsVault {
+		fldPath := field.NewPath("spec").Child("vault")
+		err := errors.New("the Astarte version must be at least 1.4.0 to use Vault")
+		return field.Invalid(fldPath, r.Spec.Version, err.Error())
+	}
+
+	return nil
 }
 
 func validateUpdateAstarteInstanceID(r *apiv2alpha1.Astarte, oldAstarte *apiv2alpha1.Astarte) *field.Error {
@@ -266,7 +356,7 @@ func validateUpdateAstarteInstanceID(r *apiv2alpha1.Astarte, oldAstarte *apiv2al
 func validateCreateAstarteInstanceID(r *apiv2alpha1.Astarte) *field.Error {
 	astarteList := &apiv2alpha1.AstarteList{}
 	if clientErr := c.List(context.Background(), astarteList); clientErr != nil {
-		err := errors.New("cannot list astarte instances in the cluster. Please retry.")
+		err := errors.New("cannot list astarte instances in the cluster. Please retry")
 		astartelog.Info(clientErr.Error(), "details", err.Error())
 		return field.InternalError(field.NewPath(""), err)
 	}
@@ -377,7 +467,7 @@ func validatePriorityClassesValues(r *apiv2alpha1.Astarte) *field.Error {
 	lowPriorityValue := *r.Spec.Features.AstartePodPriorities.AstarteLowPriority
 
 	if midPriorityValue >= highPriorityValue || lowPriorityValue >= midPriorityValue {
-		err := errors.New("Astarte PriorityClass values are incoherent")
+		err := errors.New("the Astarte PriorityClass values are incoherent")
 		astartelog.Info(err.Error())
 		fldPath := field.NewPath("spec").Child("features").Child("astarte{Low|Medium|High}Priority")
 
@@ -390,20 +480,38 @@ func validateCreateAstarteSystemKeyspace(r *apiv2alpha1.Astarte) field.ErrorList
 	allErrs := field.ErrorList{}
 	ask := r.Spec.Cassandra.AstarteSystemKeyspace
 
+	// Replication strategy is required and validated with
+	// kubebuilder annotations. At this point is already set.
+
 	if ask.ReplicationStrategy == "SimpleStrategy" {
+		// replication factor must be set
+		if ask.ReplicationFactor == nil {
+			err := errors.New("required replication factor is not set")
+			astartelog.Info(err.Error())
+			fldPath := field.NewPath("spec").Child("cassandra").Child("astarteSystemKeyspace").Child("replicationFactor")
+			allErrs = append(allErrs, field.Invalid(fldPath, ask.ReplicationFactor, err.Error()))
+		}
+
 		// replication factor must be odd
-		if ask.ReplicationFactor%2 == 0 {
+		if ask.ReplicationFactor != nil && *ask.ReplicationFactor%2 == 0 {
 			err := errors.New("invalid replication factor: it must be odd")
 			astartelog.Info(err.Error())
 			fldPath := field.NewPath("spec").Child("cassandra").Child("astarteSystemKeyspace").Child("replicationFactor")
-
 			allErrs = append(allErrs, field.Invalid(fldPath, ask.ReplicationFactor, err.Error()))
 		}
+
 		return allErrs
 	}
 
 	// If we reached this point, NetworkTopologyStrategy has been chosen
 	keyValuePairs := make(map[string]int)
+	if r.Spec.Cassandra.AstarteSystemKeyspace.DataCenterReplication == "" {
+		err := errors.New("field DataCenterReplication must be set when ReplicationStrategy is NetworkTopologyStrategy")
+		astartelog.Info(err.Error())
+		fldPath := field.NewPath("spec").Child("cassandra").Child("astarteSystemKeyspace").Child("dataCenterReplication")
+		allErrs = append(allErrs, field.Invalid(fldPath, ask.DataCenterReplication, err.Error()))
+		return allErrs
+	}
 
 	items := strings.Split(r.Spec.Cassandra.AstarteSystemKeyspace.DataCenterReplication, ",")
 	for _, dr := range items {
@@ -454,8 +562,8 @@ func validateCreateAstarteSystemKeyspace(r *apiv2alpha1.Astarte) field.ErrorList
 }
 
 func validateUpdateAstarteSystemKeyspace(r *apiv2alpha1.Astarte, oldAstarte *apiv2alpha1.Astarte) *field.Error {
-	if r.Spec.Cassandra.AstarteSystemKeyspace != oldAstarte.Spec.Cassandra.AstarteSystemKeyspace {
-		err := errors.New("Once Astarte is created, the astarteSystemKeyspace cannot be modified")
+	if !equality.Semantic.DeepEqual(r.Spec.Cassandra.AstarteSystemKeyspace, oldAstarte.Spec.Cassandra.AstarteSystemKeyspace) {
+		err := errors.New("once Astarte is created, the astarteSystemKeyspace cannot be modified")
 		fldPath := field.NewPath("spec").Child("cassandra").Child("astarteSystemKeyspace")
 		return field.Invalid(fldPath, r.Spec.Cassandra.AstarteSystemKeyspace, err.Error())
 	}
@@ -470,7 +578,7 @@ func validateCFSSLDefinition(r *apiv2alpha1.Astarte) *field.Error {
 
 	// If we are here, CFSSL is not being deployed. Ensure URL is set.
 	if r.Spec.CFSSL.URL == "" {
-		err := errors.New("When not deploying CFSSL, the 'url' must be specified")
+		err := errors.New("when not deploying CFSSL, the 'url' must be specified")
 		fldPath := field.NewPath("spec").Child("cfssl").Child("url")
 		astartelog.Info(err.Error())
 		return field.Invalid(fldPath, r.Spec.CFSSL.URL, err.Error())
@@ -479,7 +587,7 @@ func validateCFSSLDefinition(r *apiv2alpha1.Astarte) *field.Error {
 	// If URL is set, ensure it is compliant with RFC 3986
 	_, err := url.Parse(r.Spec.CFSSL.URL)
 	if err != nil {
-		err := errors.New("The provided URL is not valid")
+		err := errors.New("the provided URL is not valid")
 		fldPath := field.NewPath("spec").Child("cfssl").Child("url")
 		astartelog.Info(err.Error())
 		return field.Invalid(fldPath, r.Spec.CFSSL.URL, err.Error())

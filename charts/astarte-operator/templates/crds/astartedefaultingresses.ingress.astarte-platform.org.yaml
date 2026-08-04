@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ .Release.Name }}-serving-cert'
-    controller-gen.kubebuilder.io/version: v0.16.1
+    controller-gen.kubebuilder.io/version: v0.18.0
     helm.sh/resource-policy: keep
   name: astartedefaultingresses.ingress.astarte-platform.org
 spec:
@@ -28,7 +28,14 @@ spec:
     singular: astartedefaultingress
   scope: Namespaced
   versions:
-    - name: v2alpha1
+    - additionalPrinterColumns:
+        - jsonPath: .status.api.loadBalancer.ingress[0].ip
+          name: API IP
+          type: string
+        - jsonPath: .status.broker.loadBalancer.ingress[0].ip
+          name: Broker IP
+          type: string
+      name: v2alpha1
       schema:
         openAPIV3Schema:
           properties:

@@ -1,9 +1,6 @@
 # Astarte Kubernetes Operator
 
-![CI](https://github.com/astarte-platform/astarte-kubernetes-operator/workflows/Operator%20e2e%20tests/badge.svg?branch=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/astarte-platform/astarte-kubernetes-operator)](https://goreportcard.com/report/github.com/astarte-platform/astarte-kubernetes-operator)
-[![License](http://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
-![Docker Pulls](https://img.shields.io/docker/pulls/astarte/astarte-kubernetes-operator)
+[![Version: 26.7.0-rc.2](https://img.shields.io/badge/Version-26.7.0--rc.2-informational?style=flat-square)](https://github.com/astarte-platform/astarte-kubernetes-operator/releases) [![License](http://img.shields.io/:license-apache-blue.svg?style=flat-square)](http://www.apache.org/licenses/LICENSE-2.0.html) [![Docker Pulls](https://img.shields.io/docker/pulls/astarte/astarte-kubernetes-operator?style=flat-square)](https://hub.docker.com/r/astarte/astarte-kubernetes-operator) 
 
 <img src="mascotte.svg" align="right" width="160px" />
 Astarte Kubernetes Operator runs and manages an Astarte Cluster in a Kubernetes Cluster. It is meant
@@ -13,7 +10,7 @@ ensure Astarte runs as smooth as possible. It also handles upgrades, monitoring,
 Astarte Operator is the foundation of any Astarte installation, and you can find more information
 about it and how to use it once installed in the
 [Astarte Operator
-guide](https://docs.astarte-platform.org/astarte-kubernetes-operator/snapshot/001-intro_administrator.html).
+guide](https://docs.astarte-platform.org/astarte-kubernetes-operator/26.7/001-intro_administrator.html).
 
 ## Getting started
 
@@ -24,7 +21,7 @@ Astarte Operator requires [`cert-manager`](https://cert-manager.io/) (`v1.7+`) t
 the cluster in its default configuration. If you are using `cert-manager` in your cluster already
 you don't need to take any action - otherwise, you will need to install it. A complete overview on
 prerequisites can be found
-[here](https://docs.astarte-platform.org/astarte-kubernetes-operator/snapshot/020-prerequisites.html).
+[here](https://docs.astarte-platform.org/astarte-kubernetes-operator/26.7/020-prerequisites.html).
 
 To install `cert-manager` simply run:
 ```bash
@@ -55,13 +52,13 @@ helm upgrade astarte-operator astarte/astarte-operator
 
 If you are interested in having a deeper understanding on how the Astarte Operator works you should
 follow the [Astarte Operator Administration
-guide](https://docs.astarte-platform.org/astarte-kubernetes-operator/snapshot/001-intro_administrator.html).
+guide](https://docs.astarte-platform.org/astarte-kubernetes-operator/26.7/001-intro_administrator.html).
 
 ### What's next?
 
 Once your Astarte Operator is up and running in your cluster, it will be time to deploy your Astarte
 instance! All you have to do is [Setting up the
-Cluster](https://docs.astarte-platform.org/astarte-kubernetes-operator/snapshot/060-setup_cluster.html).
+Cluster](https://docs.astarte-platform.org/astarte-kubernetes-operator/26.7/060-setup_cluster.html).
 
 ## Kubernetes support
 
@@ -88,13 +85,19 @@ Key:
 |:------------------------:|:---------------:|:------------------:|
 | v23.5                    | v1.0+           | v1.22+             |
 | v24.5                    | v1.0+           | v1.24+             |
-| v25.5                    | v1.0+           | v1.24+             |
+| v22.11                   | v1.0 - v1.1.0   | v1.22+             |
+| v23.5                    | v1.0 - v1.1.1   | v1.22+             |
+| v24.5                    | v1.0 - v1.2.0   | v1.24+             |
+| v24.5.2                  | v1.2.1 - v1.2.x | v1.24+             |
+| v26.5                    | v1.3.x          | v1.24+             |
+| v26.7                    | v1.3.x - v1.4.x | v1.24+             |
+
 
 
 ## Development
 
 Astarte's Operator is written in Go and built upon [Operator
-SDK](https://github.com/operator-framework/operator-sdk). It depends on Go 1.22, requires Go
+SDK](https://github.com/operator-framework/operator-sdk). It depends on Go 1.23, requires Go
 Modules and Kubernetes v1.24+.
 
-The project is built with kustomize v5.4.2, controller-gen v0.15.0 and conversion-gen v0.27.16.
+The project is built with kustomize v5.4.3, controller-gen v0.16 and conversion-gen v0.27.16.

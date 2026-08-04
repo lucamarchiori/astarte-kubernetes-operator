@@ -19,7 +19,6 @@ limitations under the License.
 package v2alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,10 +54,12 @@ type AstarteDefaultIngressSpec struct {
 	metav1.TypeMeta `json:",inline"`
 	// The name of the Astarte instance served by the AstarteDefaultIngress.
 	Astarte string `json:"astarte"`
-	// In clusters with more than one instance of the Ingress-NGINX controller, all
+	// In clusters with more than one ingress controllers, all
 	// instances of the controllers must be aware of which Ingress object they must serve.
 	// The ingressClass field of a ingress object is the way to let the controller know about that.
-	// Default: "nginx".
+	// If empty, admission webhooks set default IngressClass based on Ingress Controller selection
+	// defined in the annotation `ingress.astarte-platform.org/ingress-controller-selector`.
+	// If the annotation is not set, HAProxy Ingress Controller is assumed by default.
 	// +optional
 	IngressClass string `json:"ingressClass"`
 	// Define the desired state of the AstarteDefaultIngressAPISpec resource.
@@ -83,12 +84,14 @@ type AstarteDefaultIngressSpec struct {
 type AstarteDefaultIngressStatus struct {
 	metav1.TypeMeta `json:",inline"`
 	APIStatus       networkingv1.IngressStatus `json:"api,omitempty"`
-	BrokerStatus    corev1.ServiceStatus       `json:"broker,omitempty"`
+	BrokerStatus    v1.ServiceStatus           `json:"broker,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=adi
+// +kubebuilder:printcolumn:name="API IP",type=string,JSONPath=`.status.api.loadBalancer.ingress[0].ip`,priority=0
+// +kubebuilder:printcolumn:name="Broker IP",type=string,JSONPath=`.status.broker.loadBalancer.ingress[0].ip`,priority=0
 // AstarteDefaultIngress is the Schema for the astartedefaultingresses API
 //
 // **Custom ADI annotations**

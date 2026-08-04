@@ -4,7 +4,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [25.5.0] - Unreleased
+## [26.7.0-rc.2] - 2026-07-31
+
+### Fixed
+- Fix bug that was not setting external CSFFL URL from the CR on VerneMQ
+
+## [26.7.0-rc.1] - 2026-07-15
+
+### Fixed
+- Fix HTTP to HTTPS redirect on port 443 instead of 8443
+
+### Changed
+- Improve Vault configuration and related Env Vars
+
+## [26.7.0-rc.0] - 2026-07-13
+
+### Added
+- Add `Operator Version`, `Astarte Version`, `Health`, `Base API URL` and `Broker URL` columns as print columns to the Astarte CRD.
+- Add `API IP` and `Broker IP` columns as print columns to the ADI CRD.
+- Add `AstarteFDOIngress` (v1alpha1) resource in the `ingress.astarte-platform.org` group to handle the ingress dedicated to Astarte FDO pairing requests.
+- Add configurable metrics endpoint in the Helm chart. Metrics are disabled by default (`metrics.enable: false`). When enabled (`metrics.enable: true`), metrics are served on the configured port (`metrics.port`, default `8443`) over HTTPS by default (`metrics.secure: true`). Set `metrics.secure: false` to use HTTP instead.
+- Add support for Astarte v1.4.0.
+- Enforce FDO as mandatory starting from Astarte 1.4.0.
+- Add support for Vault configuration in the Astarte CR. Vault configuration is now required for Astarte 1.4 and above and ignored for Astarte 1.3.
+- Add upgrade documentation for the v26.5 to v26.7 upgrade path.
+
+### Changed
+- Bump Operator SDK version to v1.42.3.
+
+## [26.5.1] - 2026-05-03
+
+### Fixed
+- Service `astarte-vernemq` now expose `mqtt-ssl` (8883) port
+
+### Changed
+- Astarte Operator Helm Chart version bumped to 26.5.2. Default image tag changed to "26.5.1".
+
+## [26.5.0] - 2026-05-07
+### Added
+- When the `manualMaintenanceMode` field is set to `true` in the Astarte CR, the reconciliation of AstarteDefaultIngress resources is skipped.
+
+### Changed
+- Moved FDO configuration from the `spec.features` field to a dedicated `spec.fdo` field in the Astarte CR.
+- FDO configuration now support a more granular configuration of the Rendezvous Server connection parameters under the `spec.fdo.rendezvousServer.connection` field.
+
+## [26.5.0-alpha.0] - 2026-04-10
 ### Added
 - Add v2alpha1 API version for the api.astarte-platform.org group.
 - Add v2alpha1 API version for the flow.astarte-platform.org group.
@@ -28,7 +72,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Forward port changes from release-24.5
-- Upgrade Operator SDK to v1.40.
+- Upgrade Operator SDK to v1.42.2.
 - Add Kubernetes 1.33 to the supported list.
 - Add E2E tests for Kubernetes 1.33 and remove tests for Kubernetes 1.29.
 - Allow to override the global ImagePullPolicy for every Astarte component.
@@ -54,13 +98,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Fix the propagation of replicaCount, installCrds, and pullPolicy values
   in values.yaml during Helm chart installation.
-- Fix E2E tests for Astarte v1.3+ and Astarte Operator v25.5+.
+- Fix E2E tests for Astarte v1.3+ and Astarte Operator v26.5+.
 - Fix HPA race condition on initialization (#397).
   If the HPA reports 0 desired replicas, the operator will ignore the HPA and use
   the replica count from the Astarte custom resource instead.
 - Fix index out of range bug in `astarte_webhook.go`.
 
-## [24.5.2] - Unreleased
+
+## [24.5.2] - 2026-03-25
+
+## [24.5.2-rc.0] - 2025-09-24
 ### Added
 - AppEngine, DUP, VerneMQ have `get` and `list` permissions on
   endpoints, pods and services.
